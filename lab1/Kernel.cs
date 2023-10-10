@@ -6,27 +6,45 @@ public class Kernel
     public List<Process> Processes;
     public int NumberOfPagesFault = 0;
     public int TotalNumberOfRequests = 0;
-    public int ProcessCount = 0;
-    public int MaxProcessCount;
+    private int ProcessCount = 0;
+    private readonly int StartProcessCount;
+    private readonly int MaxProcessCount;
+    private readonly int QuantumOfTime;
     private readonly Random Rand = new();
+    private readonly List<Process> ProcessesToAdd = new();
     private readonly List<Process> ProcessesToRemove = new();
 
-    public Kernel(int maxProcessCount, int numberOfPhysicalPages, uint startPageNumber)
+    public Kernel(
+        int maxProcessCount,
+        int numberOfPhysicalPages,
+        uint startPageNumber,
+        int startProcessCount,
+        int quantumOfTime
+    )
     {
         MemoryManager = new MMU(numberOfPhysicalPages, startPageNumber);
         Processes = new List<Process>();
+        StartProcessCount = startProcessCount;
         MaxProcessCount = maxProcessCount;
+        QuantumOfTime = quantumOfTime;
+
+        for (int i = 0; i < startProcessCount; i++)
+        {
+            var process = GenerateNewProcess();
+            Processes.Add(process);
+        }
+
+        Console.WriteLine($"Kernel with {numberOfPhysicalPages} number of physical pages, {startProcessCount} start processes, {maxProcessCount} max process count, {quantumOfTime} quantum of time was created.");
     }
 
-    public void AddProcess()
+    public Process GenerateNewProcess()
     {
         var id = ProcessCount + 1;
         var numberOfVirtualPages = Rand.Next(30, 60);
         var requiredNumberOfRequests = Rand.Next(50, 130);
-
-        var process = new Process(id, numberOfVirtualPages, requiredNumberOfRequests);
-        Processes.Add(process);
         ProcessCount++;
+
+        return new Process(id, numberOfVirtualPages, requiredNumberOfRequests);
     }
 
     public void PageFault(VirtualPage[] pageTable, int idx)
@@ -88,7 +106,10 @@ public class Kernel
                 Console.WriteLine($"Process with id {process.Id} was completed and removed from queue.");
             }
 
-            // create new process if time
+            if (IsTimeToCreateNewProcess())
+            {
+                ProcessesToAdd.Add(GenerateNewProcess());
+            }
         }
 
         foreach (var process in ProcessesToRemove)
@@ -96,5 +117,18 @@ public class Kernel
             Processes.Remove(process);
         }
         ProcessesToRemove.Clear();
+
+        foreach (var process in ProcessesToAdd)
+        {
+            Processes.Add(process);
+        }
+        ProcessesToAdd.Clear();
+    }
+
+    private bool IsTimeToCreateNewProcess()
+    {
+        bool isNewProcessNeeded = ProcessCount < MaxProcessCount;
+        bool isNewProcessNeededJustNow = TotalNumberOfRequests - QuantumOfTime * (ProcessCount - StartProcessCount) >= QuantumOfTime;
+        return isNewProcessNeeded && isNewProcessNeededJustNow;
     }
 }
