@@ -4,19 +4,21 @@ class Program
 {
     static void Main(string[] args)
     {
-        int numberOfPhysicalPages = 15;
-        int maxProcessCount = 5;
+        int numberOfPhysicalPages = 100;
+        int maxProcessCount = 10;
         uint startPageNumber = 0x00010000;
 
         var kernel = new Kernel(maxProcessCount, numberOfPhysicalPages, startPageNumber);
 
-        var p1 = new Process(1, 20, 100);
-        var p2 = new Process(2, 25, 100);
+        kernel.AddProcess();
+        kernel.AddProcess();
+        kernel.AddProcess();
 
-        kernel.AddProcess(p1);
-        kernel.AddProcess(p2);
+        while (kernel.Processes.Count > 0)
+        {
+            kernel.Run();
+        }
 
-        kernel.Run();
-        kernel.Run();
+        Console.WriteLine($"{100 * kernel.NumberOfPagesFault / kernel.TotalNumberOfRequests}% of requests were page faults.");
     }
 }

@@ -8,10 +8,10 @@ public class Process
     public int RequiredNumberOfRequests { get; private set; }
     public int CurrentNumberOfRequests { get; private set; } = 0;
 
-    public Process(int id, int numberOfVirtualPages, int requiredNumberOfMemoryAccesses)
+    public Process(int id, int numberOfVirtualPages, int requiredNumberOfRequests)
     {
         Id = id;
-        RequiredNumberOfRequests = requiredNumberOfMemoryAccesses;
+        RequiredNumberOfRequests = requiredNumberOfRequests;
         PageTable = new VirtualPage[numberOfVirtualPages];
 
         for (int i = 0; i < numberOfVirtualPages; i++)
@@ -24,6 +24,8 @@ public class Process
                 PPN = 0,
             };
         }
+
+        Console.WriteLine($"Process with id {id}, {numberOfVirtualPages} virtual pages, {requiredNumberOfRequests} required number of requests was created.");
     }
 
     public void IncreaseCurrentRequestsCount(int numberOfRequests) => CurrentNumberOfRequests += numberOfRequests;
