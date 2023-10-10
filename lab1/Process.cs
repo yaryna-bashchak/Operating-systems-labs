@@ -26,5 +26,7 @@ public class Process
         }
     }
 
-    public bool IsProcessCompleted() => CurrentNumberOfRequests >= RequiredNumberOfRequests;
+    public void IncreaseCurrentRequestsCount(int numberOfRequests) => CurrentNumberOfRequests += numberOfRequests;
+    
+    public bool IsCompleted() => CurrentNumberOfRequests >= RequiredNumberOfRequests;
 }
