@@ -2,24 +2,15 @@ namespace lab1;
 
 public class Kernel
 {
-    //public MMU MemoryManager { get; private set; }
+    public MMU MemoryManager { get; private set; }
     public List<Process> Processes;
-    public List<PhysicalPage> FreePages;
-    public List<PhysicalPage> BusyPages;
     public int NumberOfPagesFault;
 
     public Kernel(int numberOfPhysicalPages, uint startPageNumber)
     {
-        //MemoryManager = new MMU(physicalPages);
+        MemoryManager = new MMU(numberOfPhysicalPages, startPageNumber);
         Processes = new List<Process>();
-        FreePages = new List<PhysicalPage>();
-        BusyPages = new List<PhysicalPage>();
         NumberOfPagesFault = default;
-
-        for (int i = 0; i < numberOfPhysicalPages; i++)
-        {
-            FreePages.Add(new PhysicalPage { PPN = startPageNumber + (uint)i });
-        }
     }
 
     public void AddProcess(Process process)
@@ -31,11 +22,11 @@ public class Kernel
     {
         PhysicalPage physicalPage;
 
-        if (FreePages.Count > 0)
+        if (MemoryManager.FreePages.Count > 0)
         {
-            physicalPage = FreePages[0];
-            FreePages.RemoveAt(0);
-            BusyPages.Add(physicalPage);
+            physicalPage = MemoryManager.FreePages[0];
+            MemoryManager.FreePages.RemoveAt(0);
+            MemoryManager.BusyPages.Add(physicalPage);
         }
         else
         {
@@ -55,8 +46,8 @@ public class Kernel
     {
         Random rand = new();
 
-        int index = rand.Next(BusyPages.Count);
-        PhysicalPage pageToReplace = BusyPages[index];
+        int index = rand.Next(MemoryManager.BusyPages.Count);
+        PhysicalPage pageToReplace = MemoryManager.BusyPages[index];
         Console.WriteLine($"Page Fault. Number of page to replace: {pageToReplace.PPN:X8}");
 
         return pageToReplace;
@@ -64,6 +55,6 @@ public class Kernel
 
     public void Run()
     {
-
+        
     }
 }
