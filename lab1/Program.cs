@@ -9,13 +9,15 @@ class Program
         uint startPageNumber = 0x00010000;
         int startProcessCount = 5;
         int quantumOfTime = 200;
+        int sizeOfWorkingSet = 20;
 
         var kernel = new Kernel(
             maxProcessCount,
             numberOfPhysicalPages,
             startPageNumber,
             startProcessCount,
-            quantumOfTime
+            quantumOfTime,
+            sizeOfWorkingSet
         );
 
         while (kernel.Processes.Count > 0)

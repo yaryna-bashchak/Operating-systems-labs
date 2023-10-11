@@ -10,6 +10,7 @@ public class Kernel
     private readonly int StartProcessCount;
     private readonly int MaxProcessCount;
     private readonly int QuantumOfTime;
+    private readonly int SizeOfWorkingSet;
     private readonly Random Rand = new();
     private readonly List<Process> ProcessesToAdd = new();
     private readonly List<Process> ProcessesToRemove = new();
@@ -19,7 +20,8 @@ public class Kernel
         int numberOfPhysicalPages,
         uint startPageNumber,
         int startProcessCount,
-        int quantumOfTime
+        int quantumOfTime,
+        int sizeOfWorkingSet
     )
     {
         MemoryManager = new MMU(numberOfPhysicalPages, startPageNumber);
@@ -27,6 +29,7 @@ public class Kernel
         StartProcessCount = startProcessCount;
         MaxProcessCount = maxProcessCount;
         QuantumOfTime = quantumOfTime;
+        SizeOfWorkingSet = sizeOfWorkingSet;
 
         for (int i = 0; i < startProcessCount; i++)
         {
@@ -42,7 +45,7 @@ public class Kernel
         var numberOfVirtualPages = Rand.Next(30, 60);
         var requiredNumberOfRequests = Rand.Next(50, 130);
 
-        var process = new Process(id, numberOfVirtualPages, requiredNumberOfRequests);
+        var process = new Process(id, numberOfVirtualPages, requiredNumberOfRequests, SizeOfWorkingSet);
         Processes.Add(process);
         ProcessCount++;
     }
