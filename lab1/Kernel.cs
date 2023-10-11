@@ -30,21 +30,21 @@ public class Kernel
 
         for (int i = 0; i < startProcessCount; i++)
         {
-            var process = GenerateNewProcess();
-            Processes.Add(process);
+            AddNewProcess();
         }
 
         Console.WriteLine($"Kernel with {numberOfPhysicalPages} number of physical pages, {startProcessCount} start processes, {maxProcessCount} max process count, {quantumOfTime} quantum of time was created.");
     }
 
-    public Process GenerateNewProcess()
+    public void AddNewProcess()
     {
         var id = ProcessCount + 1;
         var numberOfVirtualPages = Rand.Next(30, 60);
         var requiredNumberOfRequests = Rand.Next(50, 130);
-        ProcessCount++;
 
-        return new Process(id, numberOfVirtualPages, requiredNumberOfRequests);
+        var process = new Process(id, numberOfVirtualPages, requiredNumberOfRequests);
+        Processes.Add(process);
+        ProcessCount++;
     }
 
     public void PageFault(VirtualPage[] pageTable, int idx)
@@ -82,12 +82,14 @@ public class Kernel
 
     public void Run()
     {
-        foreach (var process in Processes)
+        for (int i = 0; i < Processes.Count; i++)
         {
+            var process = Processes[i];
+
             // change working set if needed
 
             int numberOfRequests = Rand.Next(40, 60);
-            for (int i = 0; i < numberOfRequests; i++)
+            for (int j = 0; j < numberOfRequests; j++)
             {
                 // 90/10 from working set and from all
                 int idx = Rand.Next(process.PageTable.Length);
@@ -108,7 +110,8 @@ public class Kernel
 
             if (IsTimeToCreateNewProcess())
             {
-                ProcessesToAdd.Add(GenerateNewProcess());
+                Console.WriteLine($"Total requests: {TotalNumberOfRequests}.");
+                AddNewProcess();
             }
         }
 
@@ -117,12 +120,6 @@ public class Kernel
             Processes.Remove(process);
         }
         ProcessesToRemove.Clear();
-
-        foreach (var process in ProcessesToAdd)
-        {
-            Processes.Add(process);
-        }
-        ProcessesToAdd.Clear();
     }
 
     private bool IsTimeToCreateNewProcess()
