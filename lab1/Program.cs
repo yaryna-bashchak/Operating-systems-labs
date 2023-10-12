@@ -5,10 +5,11 @@ class Program
     static void Main(string[] args)
     {
         int numberOfPhysicalPages = 100;
-        int maxProcessCount = 20;
+        int maxProcessCount = 10;
         uint startPageNumber = 0x00010000;
-        int startProcessCount = 5;
-        int quantumOfTime = 200;
+        int startProcessCount = 4;
+        int quantumOfTime = 500;
+        int intervalToGenerateNewWorkingSet = 200;
         int workingSetPercentage = 50;
 
         var kernel = new Kernel(
@@ -17,7 +18,8 @@ class Program
             startPageNumber,
             startProcessCount,
             quantumOfTime,
-            workingSetPercentage
+            workingSetPercentage,
+            intervalToGenerateNewWorkingSet
         );
 
         while (kernel.Processes.Count > 0)

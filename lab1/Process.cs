@@ -7,7 +7,7 @@ public class Process
     public WorkingSet WorkingSet { get; private set; }
     public int RequiredNumberOfRequests { get; private set; }
     public int CurrentNumberOfRequests { get; private set; } = 0;
-
+    
     public Process(int id, int numberOfVirtualPages, int requiredNumberOfRequests, int workingSetPercentage)
     {
         Id = id;
@@ -29,7 +29,11 @@ public class Process
         Console.WriteLine($"Process with id {id}, {numberOfVirtualPages} virtual pages, {WorkingSet.IndexesSet.Count} size of working set, {requiredNumberOfRequests} required number of requests was created.");
     }
 
-    public void IncreaseCurrentRequestsCount(int numberOfRequests) => CurrentNumberOfRequests += numberOfRequests;
+    public void IncreaseCurrentRequestsCount(int numberOfRequests)
+    {
+        CurrentNumberOfRequests += numberOfRequests;
+        WorkingSet.CurrentNumberOfRequests += numberOfRequests;
+    }
     
     public bool IsCompleted() => CurrentNumberOfRequests >= RequiredNumberOfRequests;
 }

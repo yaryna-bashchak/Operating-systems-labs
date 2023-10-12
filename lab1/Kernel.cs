@@ -11,6 +11,7 @@ public class Kernel
     private readonly int MaxProcessCount;
     private readonly int QuantumOfTime;
     private readonly int WorkingSetPercentage;
+    private readonly int IntervalToGenerateNewWorkingSet;
     private readonly Random Rand = new();
     private readonly List<Process> ProcessesToAdd = new();
     private readonly List<Process> ProcessesToRemove = new();
@@ -21,7 +22,8 @@ public class Kernel
         uint startPageNumber,
         int startProcessCount,
         int quantumOfTime,
-        int workingSetPercentage
+        int workingSetPercentage,
+        int intervalToGenerateNewWorkingSet
     )
     {
         MemoryManager = new MMU(numberOfPhysicalPages, startPageNumber);
@@ -30,6 +32,7 @@ public class Kernel
         MaxProcessCount = maxProcessCount;
         QuantumOfTime = quantumOfTime;
         WorkingSetPercentage = workingSetPercentage;
+        IntervalToGenerateNewWorkingSet = intervalToGenerateNewWorkingSet;
 
         for (int i = 0; i < startProcessCount; i++)
         {
@@ -43,7 +46,7 @@ public class Kernel
     {
         var id = ProcessCount + 1;
         var numberOfVirtualPages = Rand.Next(30, 60);
-        var requiredNumberOfRequests = Rand.Next(50, 130);
+        var requiredNumberOfRequests = Rand.Next(300, 600);
 
         var process = new Process(id, numberOfVirtualPages, requiredNumberOfRequests, WorkingSetPercentage);
         Processes.Add(process);
@@ -59,7 +62,7 @@ public class Kernel
             physicalPage = MemoryManager.FreePages[0];
             MemoryManager.FreePages.RemoveAt(0);
             MemoryManager.BusyPages.Add(physicalPage);
-            Console.WriteLine("Page Fault.");
+            // Console.WriteLine("Page Fault.");
         }
         else
         {
@@ -79,7 +82,7 @@ public class Kernel
     {
         int index = Rand.Next(MemoryManager.BusyPages.Count);
         PhysicalPage pageToReplace = MemoryManager.BusyPages[index];
-        Console.WriteLine($"Page Fault. Number of page to replace: {pageToReplace.PPN:X8}");
+        // Console.WriteLine($"Page Fault. Number of page to replace: {pageToReplace.PPN:X8}");
 
         return pageToReplace;
     }
@@ -90,8 +93,12 @@ public class Kernel
         {
             var process = Processes[i];
 
-            // change working set if needed
-
+            if (process.WorkingSet.CurrentNumberOfRequests >= IntervalToGenerateNewWorkingSet)
+            {
+                process.WorkingSet.GenerateNewSet();
+                Console.WriteLine($"New working set for process {process.Id} was generated: {string.Join(", ", process.WorkingSet.IndexesSet)}");
+            }
+            
             int numberOfRequests = Rand.Next(40, 60);
             int numberOfPagesFaultBefore = NumberOfPagesFault;
 
