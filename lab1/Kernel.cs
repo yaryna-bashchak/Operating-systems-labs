@@ -59,6 +59,7 @@ public class Kernel
             physicalPage = MemoryManager.FreePages[0];
             MemoryManager.FreePages.RemoveAt(0);
             MemoryManager.BusyPages.Add(physicalPage);
+            Console.WriteLine("Page Fault.");
         }
         else
         {
@@ -92,6 +93,8 @@ public class Kernel
             // change working set if needed
 
             int numberOfRequests = Rand.Next(40, 60);
+            int numberOfPagesFaultBefore = NumberOfPagesFault;
+
             for (int j = 0; j < numberOfRequests; j++)
             {
                 // 90/10 from working set and from all
@@ -103,7 +106,9 @@ public class Kernel
 
             process.IncreaseCurrentRequestsCount(numberOfRequests);
             TotalNumberOfRequests += numberOfRequests;
-            Console.WriteLine($"Process with id {process.Id} has made {numberOfRequests} requests.");
+
+            int pageFaults = NumberOfPagesFault - numberOfPagesFaultBefore;
+            PrintInfo(process.Id, numberOfRequests, pageFaults);
 
             if (process.IsCompleted())
             {
@@ -130,5 +135,13 @@ public class Kernel
         bool isNewProcessNeeded = ProcessCount < MaxProcessCount;
         bool isNewProcessNeededJustNow = TotalNumberOfRequests - QuantumOfTime * (ProcessCount - StartProcessCount) >= QuantumOfTime;
         return isNewProcessNeeded && isNewProcessNeededJustNow;
+    }
+
+    private void PrintInfo(int processId, int numberOfRequests, int pageFaults)
+    {
+        Console.WriteLine($"Process with id {processId} has made {numberOfRequests} requests.");
+        Console.WriteLine($"Number of page faults: {pageFaults}.");
+        Console.WriteLine($"Busy pages: {MemoryManager.BusyPages.Count}.");
+        Console.WriteLine($"Free pages: {MemoryManager.FreePages.Count}.");
     }
 }
