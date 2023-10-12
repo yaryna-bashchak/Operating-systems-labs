@@ -13,7 +13,7 @@ public class Process
         Id = id;
         RequiredNumberOfRequests = requiredNumberOfRequests;
         PageTable = new VirtualPage[numberOfVirtualPages];
-        WorkingSet = new WorkingSet(numberOfVirtualPages, (int)Math.Floor((double)(numberOfVirtualPages * workingSetPercentage / 100)));
+        WorkingSet = new WorkingSet(numberOfVirtualPages, workingSetPercentage);
 
         for (int i = 0; i < numberOfVirtualPages; i++)
         {
@@ -26,7 +26,7 @@ public class Process
             };
         }
 
-        Console.WriteLine($"Process with id {id}, {numberOfVirtualPages} virtual pages, {WorkingSet.SizeOfSet} size of working set, {requiredNumberOfRequests} required number of requests was created.");
+        Console.WriteLine($"Process with id {id}, {numberOfVirtualPages} virtual pages, {WorkingSet.IndexesSet.Count} size of working set, {requiredNumberOfRequests} required number of requests was created.");
     }
 
     public void IncreaseCurrentRequestsCount(int numberOfRequests) => CurrentNumberOfRequests += numberOfRequests;

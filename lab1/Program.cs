@@ -5,7 +5,7 @@ class Program
     static void Main(string[] args)
     {
         int numberOfPhysicalPages = 100;
-        int maxProcessCount = 10;
+        int maxProcessCount = 20;
         uint startPageNumber = 0x00010000;
         int startProcessCount = 5;
         int quantumOfTime = 200;

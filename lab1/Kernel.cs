@@ -97,9 +97,17 @@ public class Kernel
 
             for (int j = 0; j < numberOfRequests; j++)
             {
-                // 90/10 from working set and from all
-                int idx = Rand.Next(process.PageTable.Length);
+                int idx;
 
+                if (Rand.Next(100) < 90)
+                {
+                    idx = process.WorkingSet.IndexesSet[Rand.Next(process.WorkingSet.IndexesSet.Count)];
+                }
+                else
+                {
+                    idx = Rand.Next(process.PageTable.Length);
+                }
+                
                 bool isModified = Rand.Next(10) <= 2;
                 MMU.AccessPage(process.PageTable, idx, isModified, this);
             }
