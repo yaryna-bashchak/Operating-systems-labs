@@ -2,7 +2,14 @@ namespace lab1;
 
 public class NRUAlgorithm
 {
-    private readonly List<PhysicalPage>[] ClassifiedPages = new List<PhysicalPage>[4];
+    public readonly List<PhysicalPage>[] ClassifiedPages = new List<PhysicalPage>[4];
+    public NRUAlgorithm()
+    {
+        for (int i = 0; i < 4; i++)
+        {
+            ClassifiedPages[i] = new List<PhysicalPage>();
+        }
+    }
 
     public void AddPageToAppropriateClass(PhysicalPage page)
     {
@@ -46,14 +53,20 @@ public class NRUAlgorithm
         return index;
     }
 
-    private void ClearAllReferenceBits()
+    public void ClearAllReferenceBits()
     {
         for (int i = 0; i < ClassifiedPages.Length; i++)
         {
             for (int j = 0; j < ClassifiedPages[i].Count; j++)
             {
                 var physicalPage = ClassifiedPages[i][j];
-                physicalPage.PageTable![physicalPage.Idx].R = false;
+                if (physicalPage.PageTable![physicalPage.Idx].R)
+                {
+                    physicalPage.PageTable![physicalPage.Idx].R = false;
+                    ClassifiedPages[i].RemoveAt(j);
+                    j--;
+                    AddPageToAppropriateClass(physicalPage);
+                }
             }
         }
     }

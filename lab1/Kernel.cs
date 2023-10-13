@@ -6,6 +6,7 @@ public class Kernel
     public List<Process> Processes;
     public int NumberOfPagesFault = 0;
     public int TotalNumberOfRequests = 0;
+    public int NumberOfRequestsWithThisQuantumOfTime = 0;
     private int ProcessCount = 0;
     private readonly int StartProcessCount;
     private readonly int MaxProcessCount;
@@ -51,7 +52,7 @@ public class Kernel
         ProcessCount++;
     }
 
-    public void PageFault(VirtualPage[] pageTable, int idx)
+    public PhysicalPage PageFault(VirtualPage[] pageTable, int idx)
     {
         PhysicalPage physicalPage;
 
@@ -59,31 +60,36 @@ public class Kernel
         {
             physicalPage = MemoryManager.FreePages[0];
             MemoryManager.FreePages.RemoveAt(0);
-            MemoryManager.BusyPages.Add(physicalPage);
+            // MemoryManager.BusyPages.Add(physicalPage); // only for Random Replacement Algolithm
+            ////MemoryManager.NRUAlgorithm.AddPageToAppropriateClass(physicalPage); // only for NRU Algolithm
             // Console.WriteLine("Page Fault.");
         }
         else
         {
-            physicalPage = RandomReplacementAlgorithm();
+            // physicalPage = RandomReplacementAlgorithm(); // only for Random Replacement Algolithm
+            physicalPage = MemoryManager.NRUAlgorithm.NRUReplacementAlgorithm(); // only for NRU Algolithm
             physicalPage.PageTable![physicalPage.Idx].P = false;
         }
 
         physicalPage.PageTable = pageTable;
         physicalPage.Idx = idx;
         pageTable[idx].P = true;
+        pageTable[idx].M = false;
         pageTable[idx].PPN = physicalPage.PPN;
 
         NumberOfPagesFault++;
+        return physicalPage;
     }
 
-    public PhysicalPage RandomReplacementAlgorithm()
-    {
-        int index = Rand.Next(MemoryManager.BusyPages.Count);
-        PhysicalPage pageToReplace = MemoryManager.BusyPages[index];
-        // Console.WriteLine($"Page Fault. Number of page to replace: {pageToReplace.PPN:X8}");
+    // only for Random Replacement Algolithm
+    // public PhysicalPage RandomReplacementAlgorithm()
+    // {
+    //     int index = Rand.Next(MemoryManager.BusyPages.Count);
+    //     PhysicalPage pageToReplace = MemoryManager.BusyPages[index];
+    //     // Console.WriteLine($"Page Fault. Number of page to replace: {pageToReplace.PPN:X8}");
 
-        return pageToReplace;
-    }
+    //     return pageToReplace;
+    // }
 
     public void Run()
     {
@@ -96,7 +102,7 @@ public class Kernel
                 process.WorkingSet.GenerateNewSet();
                 Console.WriteLine($"New working set for process {process.Id} was generated: {string.Join(", ", process.WorkingSet.IndexesSet)}");
             }
-            
+
             int numberOfRequests = Rand.Next(40, 60);
             int numberOfPagesFaultBefore = NumberOfPagesFault;
 
@@ -112,16 +118,17 @@ public class Kernel
                 {
                     idx = Rand.Next(process.PageTable.Length);
                 }
-                
+
                 bool isModified = Rand.Next(10) <= 2; // modify/not-modify = 30/70
-                MMU.AccessPage(process.PageTable, idx, isModified, this);
+                MemoryManager.AccessPage(process.PageTable, idx, isModified, this);
             }
 
             process.IncreaseCurrentRequestsCount(numberOfRequests);
             TotalNumberOfRequests += numberOfRequests;
+            NumberOfRequestsWithThisQuantumOfTime += numberOfRequests;
 
             int pageFaults = NumberOfPagesFault - numberOfPagesFaultBefore;
-            PrintInfo(process.Id, numberOfRequests, pageFaults);
+            PrintInfo(process, numberOfRequests, pageFaults);
 
             if (process.IsCompleted())
             {
@@ -135,7 +142,22 @@ public class Kernel
                 Console.WriteLine($"Total requests: {TotalNumberOfRequests}.");
                 AddNewProcess();
             }
+
+            if (IsItNewQuantumOfTime())
+            {
+                MemoryManager.NRUAlgorithm.ClearAllReferenceBits();
+            }
         }
+    }
+
+    private bool IsItNewQuantumOfTime()
+    {
+        if (NumberOfRequestsWithThisQuantumOfTime >= QuantumOfTime)
+        {
+            NumberOfRequestsWithThisQuantumOfTime -= QuantumOfTime;
+            return true;
+        }
+        return false;
     }
 
     private bool IsTimeToCreateNewProcess()
@@ -145,11 +167,17 @@ public class Kernel
         return isNewProcessNeeded && isNewProcessNeededJustNow;
     }
 
-    private void PrintInfo(int processId, int numberOfRequests, int pageFaults)
+    private void PrintInfo(Process process, int numberOfRequests, int pageFaults)
     {
-        Console.WriteLine($"Process with id {processId} has made {numberOfRequests} requests.");
+        Console.WriteLine($"Process with id {process.Id} has made {numberOfRequests} requests.");
         Console.WriteLine($"Number of page faults: {pageFaults}.");
-        Console.WriteLine($"Busy pages: {MemoryManager.BusyPages.Count}.");
+        // Console.WriteLine("{0,6} {1,6} {2,6} {3,6}", "P", "M", "R", "PPN");
+        // for (int i = 0; i < process.PageTable.Length; i++)
+        // {
+        //     Console.WriteLine("{0,6} {1,6} {2,6} {3,6}", process.PageTable[i].P, process.PageTable[i].M, process.PageTable[i].R, process.PageTable[i].PPN);
+        // }
+        //Console.WriteLine($"Busy pages: {MemoryManager.BusyPages.Count}."); // only for Random Replacement Algolithm
+        Console.WriteLine($"Busy pages: {MemoryManager.NRUAlgorithm.ClassifiedPages.Select(list => list.Count).Sum()}."); // only for NRU Algolithm
         Console.WriteLine($"Free pages: {MemoryManager.FreePages.Count}.");
     }
 }
