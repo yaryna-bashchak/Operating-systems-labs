@@ -13,8 +13,6 @@ public class Kernel
     private readonly int WorkingSetPercentage;
     private readonly int IntervalToGenerateNewWorkingSet;
     private readonly Random Rand = new();
-    private readonly List<Process> ProcessesToAdd = new();
-    private readonly List<Process> ProcessesToRemove = new();
 
     public Kernel(
         int maxProcessCount,
@@ -115,7 +113,7 @@ public class Kernel
                     idx = Rand.Next(process.PageTable.Length);
                 }
                 
-                bool isModified = Rand.Next(10) <= 2;
+                bool isModified = Rand.Next(10) <= 2; // modify/not-modify = 30/70
                 MMU.AccessPage(process.PageTable, idx, isModified, this);
             }
 
@@ -127,7 +125,8 @@ public class Kernel
 
             if (process.IsCompleted())
             {
-                ProcessesToRemove.Add(process);
+                Processes.Remove(process);
+                i--;
                 Console.WriteLine($"Process with id {process.Id} was completed and removed from queue.");
             }
 
@@ -137,12 +136,6 @@ public class Kernel
                 AddNewProcess();
             }
         }
-
-        foreach (var process in ProcessesToRemove)
-        {
-            Processes.Remove(process);
-        }
-        ProcessesToRemove.Clear();
     }
 
     private bool IsTimeToCreateNewProcess()
