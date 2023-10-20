@@ -10,6 +10,7 @@ class Program
         int startProcessCount = 4;
         int quantumOfTime = 500;
         int intervalToGenerateNewWorkingSet = 200;
+        int intervalToUpdateSomePages = 150;
         int workingSetPercentage = 50;
 
         var kernel = new Kernel(
@@ -19,7 +20,8 @@ class Program
             startProcessCount,
             quantumOfTime,
             workingSetPercentage,
-            intervalToGenerateNewWorkingSet
+            intervalToGenerateNewWorkingSet,
+            intervalToUpdateSomePages
         );
 
         while (kernel.Processes.Count > 0)

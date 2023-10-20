@@ -75,5 +75,44 @@ public class NRUAlgorithm
         Console.WriteLine($"All reference bits were cleared.");
         Console.ResetColor();
     }
+
+    public void UpdateNPages(int n)
+    {
+        int count = 0;
+        int i = 0;
+        int j = 0;
+        int numberOfUpdatedPages = 0;
+
+        while (count < n)
+        {
+            if (ClassifiedPages[i].Count == 0)
+            {
+                i++;
+                continue;
+            }
+
+            if (j >= ClassifiedPages[i].Count)
+            {
+                i++;
+                j = 0;
+            }
+
+            var physicalPage = ClassifiedPages[i][j];
+
+            if (CalculatePageClass(physicalPage) != i)
+            {
+                ClassifiedPages[i].RemoveAt(j);
+                j--;
+                AddPageToAppropriateClass(physicalPage);
+                numberOfUpdatedPages++;
+            }
+
+            j++;
+            count++;
+        }
+
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine($"{numberOfUpdatedPages} pages was updated.");
+        Console.ResetColor();
     }
 }

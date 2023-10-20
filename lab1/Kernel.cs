@@ -7,12 +7,14 @@ public class Kernel
     public int NumberOfPagesFault = 0;
     public int TotalNumberOfRequests = 0;
     public int NumberOfRequestsWithThisQuantumOfTime = 0;
+    public int NumberOfRequestsFromLastUpdate = 0;
     private int ProcessCount = 0;
     private readonly int StartProcessCount;
     private readonly int MaxProcessCount;
     private readonly int QuantumOfTime;
     private readonly int WorkingSetPercentage;
     private readonly int IntervalToGenerateNewWorkingSet;
+    private readonly int IntervalToUpdateSomePages;
     private readonly Random Rand = new();
 
     public Kernel(
@@ -22,7 +24,8 @@ public class Kernel
         int startProcessCount,
         int quantumOfTime,
         int workingSetPercentage,
-        int intervalToGenerateNewWorkingSet
+        int intervalToGenerateNewWorkingSet,
+        int intervalToUpdateSomePages
     )
     {
         MemoryManager = new MMU(numberOfPhysicalPages, startPageNumber);
@@ -32,6 +35,7 @@ public class Kernel
         QuantumOfTime = quantumOfTime;
         WorkingSetPercentage = workingSetPercentage;
         IntervalToGenerateNewWorkingSet = intervalToGenerateNewWorkingSet;
+        IntervalToUpdateSomePages = intervalToUpdateSomePages;
 
         for (int i = 0; i < startProcessCount; i++)
         {
@@ -61,7 +65,6 @@ public class Kernel
             physicalPage = MemoryManager.FreePages[0];
             MemoryManager.FreePages.RemoveAt(0);
             // MemoryManager.BusyPages.Add(physicalPage); // only for Random Replacement Algolithm
-            ////MemoryManager.NRUAlgorithm.AddPageToAppropriateClass(physicalPage); // only for NRU Algolithm
             // Console.WriteLine("Page Fault.");
         }
         else
@@ -134,6 +137,7 @@ public class Kernel
             process.IncreaseCurrentRequestsCount(numberOfRequests);
             TotalNumberOfRequests += numberOfRequests;
             NumberOfRequestsWithThisQuantumOfTime += numberOfRequests;
+            NumberOfRequestsFromLastUpdate += numberOfRequests;
 
             int pageFaults = NumberOfPagesFault - numberOfPagesFaultBefore;
             PrintInfo(process, numberOfRequests, pageFaults);
@@ -162,8 +166,23 @@ public class Kernel
             if (IsItNewQuantumOfTime())
             {
                 MemoryManager.NRUAlgorithm.ClearAllReferenceBits();
+                IsTimeToUpdateSomePages();
+            }
+            else if (IsTimeToUpdateSomePages())
+            {
+                MemoryManager.NRUAlgorithm.UpdateNPages(20);
             }
         }
+    }
+
+    private bool IsTimeToUpdateSomePages()
+    {
+        if (NumberOfRequestsFromLastUpdate >= IntervalToUpdateSomePages)
+        {
+            NumberOfRequestsFromLastUpdate -= IntervalToUpdateSomePages;
+            return true;
+        }
+        return false;
     }
 
     private bool IsItNewQuantumOfTime()
