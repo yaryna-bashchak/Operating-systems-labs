@@ -7,7 +7,7 @@ public class Process
     public WorkingSet WorkingSet { get; private set; }
     public int RequiredNumberOfRequests { get; private set; }
     public int CurrentNumberOfRequests { get; private set; } = 0;
-    
+
     public Process(int id, int numberOfVirtualPages, int requiredNumberOfRequests, int workingSetPercentage)
     {
         Id = id;
@@ -26,7 +26,15 @@ public class Process
             };
         }
 
-        Console.WriteLine($"Process with id {id}, {numberOfVirtualPages} virtual pages, {WorkingSet.IndexesSet.Count} size of working set, {requiredNumberOfRequests} required number of requests was created.");
+        Console.ForegroundColor = ConsoleColor.Magenta;
+        Console.Write("New process");
+        Console.ResetColor();
+        Console.Write($" with id ");
+        Console.ForegroundColor = ConsoleColor.Blue;
+        Console.Write($"{id}");
+        Console.ResetColor();
+        Console.WriteLine($", {numberOfVirtualPages} virtual pages, {WorkingSet.IndexesSet.Count} size of working set, {requiredNumberOfRequests} required number of requests was created.");
+        //Console.WriteLine($"New process with id {id}, {numberOfVirtualPages} virtual pages, {WorkingSet.IndexesSet.Count} size of working set, {requiredNumberOfRequests} required number of requests was created.");
     }
 
     public void IncreaseCurrentRequestsCount(int numberOfRequests)
@@ -34,6 +42,6 @@ public class Process
         CurrentNumberOfRequests += numberOfRequests;
         WorkingSet.CurrentNumberOfRequests += numberOfRequests;
     }
-    
+
     public bool IsCompleted() => CurrentNumberOfRequests >= RequiredNumberOfRequests;
 }

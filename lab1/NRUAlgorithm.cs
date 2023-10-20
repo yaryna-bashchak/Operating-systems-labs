@@ -30,6 +30,7 @@ public class NRUAlgorithm
 
                 if (CalculatePageClass(physicalPage) == i)
                 {
+                    //Console.WriteLine($"Page Fault. Number of page to replace: {physicalPage.PPN:X8}");
                     return physicalPage;
                 }
                 else
@@ -69,5 +70,10 @@ public class NRUAlgorithm
                 }
             }
         }
+
+        Console.ForegroundColor = ConsoleColor.DarkRed;
+        Console.WriteLine($"All reference bits were cleared.");
+        Console.ResetColor();
+    }
     }
 }

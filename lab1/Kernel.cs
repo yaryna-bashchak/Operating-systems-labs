@@ -100,7 +100,15 @@ public class Kernel
             if (process.WorkingSet.CurrentNumberOfRequests >= IntervalToGenerateNewWorkingSet)
             {
                 process.WorkingSet.GenerateNewSet();
-                Console.WriteLine($"New working set for process {process.Id} was generated: {string.Join(", ", process.WorkingSet.IndexesSet)}");
+                Console.ForegroundColor = ConsoleColor.DarkYellow;
+                Console.Write("New working set");
+                Console.ResetColor();
+                Console.Write($" for process ");
+                Console.ForegroundColor = ConsoleColor.Blue;
+                Console.Write($"{process.Id}");
+                Console.ResetColor();
+                Console.WriteLine($" was generated: {string.Join(", ", process.WorkingSet.IndexesSet)}");
+                //Console.WriteLine($"New working set for process {process.Id} was generated: {string.Join(", ", process.WorkingSet.IndexesSet)}");
             }
 
             int numberOfRequests = Rand.Next(40, 60);
@@ -134,7 +142,15 @@ public class Kernel
             {
                 Processes.Remove(process);
                 i--;
-                Console.WriteLine($"Process with id {process.Id} was completed and removed from queue.");
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.Write("Finished");
+                Console.ResetColor();
+                Console.Write($": process with id ");
+                Console.ForegroundColor = ConsoleColor.Blue;
+                Console.Write($"{process.Id}");
+                Console.ResetColor();
+                Console.WriteLine(" was completed and removed from queue.");
+                //Console.WriteLine($"Finished: process with id {process.Id} was completed and removed from queue.");
             }
 
             if (IsTimeToCreateNewProcess())
@@ -169,15 +185,17 @@ public class Kernel
 
     private void PrintInfo(Process process, int numberOfRequests, int pageFaults)
     {
-        Console.WriteLine($"Process with id {process.Id} has made {numberOfRequests} requests.");
-        Console.WriteLine($"Number of page faults: {pageFaults}.");
+        Console.WriteLine($"Process with id {process.Id} has made {numberOfRequests} requests, {pageFaults} of which were page faults.");
         // Console.WriteLine("{0,6} {1,6} {2,6} {3,6}", "P", "M", "R", "PPN");
         // for (int i = 0; i < process.PageTable.Length; i++)
         // {
         //     Console.WriteLine("{0,6} {1,6} {2,6} {3,6}", process.PageTable[i].P, process.PageTable[i].M, process.PageTable[i].R, process.PageTable[i].PPN);
         // }
-        //Console.WriteLine($"Busy pages: {MemoryManager.BusyPages.Count}."); // only for Random Replacement Algolithm
-        Console.WriteLine($"Busy pages: {MemoryManager.NRUAlgorithm.ClassifiedPages.Select(list => list.Count).Sum()}."); // only for NRU Algolithm
-        Console.WriteLine($"Free pages: {MemoryManager.FreePages.Count}.");
+        if (MemoryManager.FreePages.Count != 0)
+        {
+            //Console.WriteLine($"Busy pages: {MemoryManager.BusyPages.Count}."); // only for Random Replacement Algolithm
+            Console.WriteLine($"Busy pages: {MemoryManager.NRUAlgorithm.ClassifiedPages.Select(list => list.Count).Sum()}."); // only for NRU Algolithm
+            Console.WriteLine($"Free pages: {MemoryManager.FreePages.Count}.");
+        }
     }
 }
