@@ -163,6 +163,7 @@ public class Kernel
                 AddNewProcess();
             }
 
+            // only for NRU Algolithm
             if (IsItNewQuantumOfTime())
             {
                 MemoryManager.NRUAlgorithm.ClearAllReferenceBits();

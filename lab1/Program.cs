@@ -9,7 +9,7 @@ class Program
         uint startPageNumber = 0x00010000;
         int startProcessCount = 4;
         int quantumOfTime = 500;
-        int workingSetPercentage = 70; // specifies size of working set as percentage of total number of virtual pages of process
+        int workingSetPercentage = 50; // specifies size of working set as percentage of total number of virtual pages of process
         int intervalToGenerateNewWorkingSet = 200;
         int intervalToUpdateSomePages = 150;
         int numberOfPagesToUpdateEachInterval = 20;
