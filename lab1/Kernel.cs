@@ -67,13 +67,13 @@ public class Kernel
         {
             physicalPage = MemoryManager.FreePages[0];
             MemoryManager.FreePages.RemoveAt(0);
-            MemoryManager.BusyPages.Add(physicalPage); // only for Random Replacement Algolithm
+            // MemoryManager.BusyPages.Add(physicalPage); // only for Random Replacement Algolithm
             // Console.WriteLine("Page Fault.");
         }
         else
         {
-            physicalPage = RandomReplacementAlgorithm(); // only for Random Replacement Algolithm
-            // physicalPage = MemoryManager.NRUAlgorithm.NRUReplacementAlgorithm(); // only for NRU Algolithm
+            // physicalPage = RandomReplacementAlgorithm(); // only for Random Replacement Algolithm
+            physicalPage = MemoryManager.NRUAlgorithm.NRUReplacementAlgorithm(); // only for NRU Algolithm
             physicalPage.PageTable![physicalPage.Idx].P = false;
         }
 
@@ -88,14 +88,14 @@ public class Kernel
     }
 
     // only for Random Replacement Algolithm
-    public PhysicalPage RandomReplacementAlgorithm()
-    {
-        int index = Rand.Next(MemoryManager.BusyPages.Count);
-        PhysicalPage pageToReplace = MemoryManager.BusyPages[index];
-        // Console.WriteLine($"Page Fault. Number of page to replace: {pageToReplace.PPN:X8}");
+    // public PhysicalPage RandomReplacementAlgorithm()
+    // {
+    //     int index = Rand.Next(MemoryManager.BusyPages.Count);
+    //     PhysicalPage pageToReplace = MemoryManager.BusyPages[index];
+    //     // Console.WriteLine($"Page Fault. Number of page to replace: {pageToReplace.PPN:X8}");
 
-        return pageToReplace;
-    }
+    //     return pageToReplace;
+    // }
 
     public void Run()
     {
@@ -164,15 +164,15 @@ public class Kernel
             }
 
             // only for NRU Algolithm
-            // if (IsItNewQuantumOfTime())
-            // {
-            //     MemoryManager.NRUAlgorithm.ClearAllReferenceBits();
-            //     IsTimeToUpdateSomePages();
-            // }
-            // else if (IsTimeToUpdateSomePages())
-            // {
-            //     MemoryManager.NRUAlgorithm.UpdateNPages(NumberOfPagesToUpdateEachInterval);
-            // }
+            if (IsItNewQuantumOfTime())
+            {
+                MemoryManager.NRUAlgorithm.ClearAllReferenceBits();
+                IsTimeToUpdateSomePages();
+            }
+            else if (IsTimeToUpdateSomePages())
+            {
+                MemoryManager.NRUAlgorithm.UpdateNPages(NumberOfPagesToUpdateEachInterval);
+            }
         }
     }
 
@@ -213,8 +213,8 @@ public class Kernel
         // }
         if (MemoryManager.FreePages.Count != 0)
         {
-            Console.WriteLine($"Busy pages: {MemoryManager.BusyPages.Count}."); // only for Random Replacement Algolithm
-            // Console.WriteLine($"Busy pages: {MemoryManager.NRUAlgorithm.ClassifiedPages.Select(list => list.Count).Sum()}."); // only for NRU Algolithm
+            // Console.WriteLine($"Busy pages: {MemoryManager.BusyPages.Count}."); // only for Random Replacement Algolithm
+            Console.WriteLine($"Busy pages: {MemoryManager.NRUAlgorithm.ClassifiedPages.Select(list => list.Count).Sum()}."); // only for NRU Algolithm
             Console.WriteLine($"Free pages: {MemoryManager.FreePages.Count}.");
         }
     }
