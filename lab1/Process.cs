@@ -34,7 +34,6 @@ public class Process
         Console.Write($"{id}");
         Console.ResetColor();
         Console.WriteLine($", {numberOfVirtualPages} virtual pages, {WorkingSet.IndexesSet.Count} size of working set, {requiredNumberOfRequests} required number of requests was created.");
-        //Console.WriteLine($"New process with id {id}, {numberOfVirtualPages} virtual pages, {WorkingSet.IndexesSet.Count} size of working set, {requiredNumberOfRequests} required number of requests was created.");
     }
 
     public void IncreaseCurrentRequestsCount(int numberOfRequests)

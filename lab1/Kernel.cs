@@ -15,6 +15,7 @@ public class Kernel
     private readonly int WorkingSetPercentage;
     private readonly int IntervalToGenerateNewWorkingSet;
     private readonly int IntervalToUpdateSomePages;
+    private readonly int NumberOfPagesToUpdateEachInterval;
     private readonly Random Rand = new();
 
     public Kernel(
@@ -25,7 +26,8 @@ public class Kernel
         int quantumOfTime,
         int workingSetPercentage,
         int intervalToGenerateNewWorkingSet,
-        int intervalToUpdateSomePages
+        int intervalToUpdateSomePages,
+        int numberOfPagesToUpdateEachInterval
     )
     {
         MemoryManager = new MMU(numberOfPhysicalPages, startPageNumber);
@@ -36,6 +38,7 @@ public class Kernel
         WorkingSetPercentage = workingSetPercentage;
         IntervalToGenerateNewWorkingSet = intervalToGenerateNewWorkingSet;
         IntervalToUpdateSomePages = intervalToUpdateSomePages;
+        NumberOfPagesToUpdateEachInterval = numberOfPagesToUpdateEachInterval;
 
         for (int i = 0; i < startProcessCount; i++)
         {
@@ -111,7 +114,6 @@ public class Kernel
                 Console.Write($"{process.Id}");
                 Console.ResetColor();
                 Console.WriteLine($" was generated: {string.Join(", ", process.WorkingSet.IndexesSet)}");
-                //Console.WriteLine($"New working set for process {process.Id} was generated: {string.Join(", ", process.WorkingSet.IndexesSet)}");
             }
 
             int numberOfRequests = Rand.Next(40, 60);
@@ -154,12 +156,10 @@ public class Kernel
                 Console.Write($"{process.Id}");
                 Console.ResetColor();
                 Console.WriteLine(" was completed and removed from queue.");
-                //Console.WriteLine($"Finished: process with id {process.Id} was completed and removed from queue.");
             }
 
             if (IsTimeToCreateNewProcess())
             {
-                Console.WriteLine($"Total requests: {TotalNumberOfRequests}.");
                 AddNewProcess();
             }
 
@@ -170,7 +170,7 @@ public class Kernel
             }
             else if (IsTimeToUpdateSomePages())
             {
-                MemoryManager.NRUAlgorithm.UpdateNPages(20);
+                MemoryManager.NRUAlgorithm.UpdateNPages(NumberOfPagesToUpdateEachInterval);
             }
         }
     }

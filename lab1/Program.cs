@@ -9,9 +9,10 @@ class Program
         uint startPageNumber = 0x00010000;
         int startProcessCount = 4;
         int quantumOfTime = 500;
+        int workingSetPercentage = 70; // specifies size of working set as percentage of total number of virtual pages of process
         int intervalToGenerateNewWorkingSet = 200;
         int intervalToUpdateSomePages = 150;
-        int workingSetPercentage = 50;
+        int numberOfPagesToUpdateEachInterval = 20;
 
         var kernel = new Kernel(
             maxProcessCount,
@@ -21,7 +22,8 @@ class Program
             quantumOfTime,
             workingSetPercentage,
             intervalToGenerateNewWorkingSet,
-            intervalToUpdateSomePages
+            intervalToUpdateSomePages,
+            numberOfPagesToUpdateEachInterval
         );
 
         while (kernel.Processes.Count > 0)
