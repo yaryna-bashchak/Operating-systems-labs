@@ -116,7 +116,6 @@ public class FileSystem
         }
     }
 
-
     public void Close(int fileDescriptorNumber)
     {
         var openedFile = OpenedFiles.FirstOrDefault(f => f.FileDescriptorNumber == fileDescriptorNumber);
@@ -155,7 +154,7 @@ public class FileSystem
         }
     }
 
-    public byte[] Read(int fileDescriptorNumber, int size)
+    public byte?[] Read(int fileDescriptorNumber, int size)
     {
         var openedFile = OpenedFiles.FirstOrDefault(f => f.FileDescriptorNumber == fileDescriptorNumber);
 
@@ -163,7 +162,7 @@ public class FileSystem
         {
             FileDescriptor fileDescriptor = Descriptors[openedFile.DescriptorIndex]!;
 
-            int remainingBytes = (int)(fileDescriptor.FileSize - openedFile.Position);
+            int remainingBytes = fileDescriptor.FileSize - openedFile.Position;
 
             if (size > remainingBytes)
             {
@@ -171,13 +170,13 @@ public class FileSystem
                 size = remainingBytes;
             }
 
-            byte[] data = new byte[size];
+            byte?[] data = new byte?[size];
             for (int i = 0; i < size; i++)
             {
-                int blockIndex = (int)(openedFile.Position / BlockSize);
-                int blockOffset = (int)(openedFile.Position % BlockSize);
+                int blockIndex = openedFile.Position / BlockSize;
+                int blockOffset = openedFile.Position % BlockSize;
 
-                data[i] = (byte)openedFile.Position;
+                data[i] = fileDescriptor.FileData[blockIndex * BlockSize + blockOffset];
 
                 openedFile.Position++;
             }
@@ -187,7 +186,7 @@ public class FileSystem
         else
         {
             Console.WriteLine($"File with descriptor number '{fileDescriptorNumber}' not found or not opened.");
-            return Array.Empty<byte>();
+            return Array.Empty<byte?>();
         }
     }
 
@@ -199,12 +198,11 @@ public class FileSystem
         {
             FileDescriptor fileDescriptor = Descriptors[openedFile.DescriptorIndex]!;
 
-            int remainingBytes = Bitmap.Count(b => !b) * BlockSize + BlockSize - 1 - ((((fileDescriptor.FileSize - 1) % BlockSize) + BlockSize) % BlockSize);
-            Console.WriteLine($"remainingBytes {remainingBytes}");
+            int remainingBytes = fileDescriptor.FileSize - openedFile.Position;
 
             if (data.Length > remainingBytes)
             {
-                Console.WriteLine($"Not enough blocks available for writing {data.Length} bytes.");
+                Console.WriteLine($"Not enough space available for writing {data.Length} bytes.");
                 return;
             }
 
@@ -212,18 +210,17 @@ public class FileSystem
             {
                 int blockIndex = openedFile.Position / BlockSize;
                 int blockOffset = openedFile.Position % BlockSize;
-                // writing data to block at index blockIndex and offset blockOffset
+                int byteIndex = blockIndex * BlockSize + blockOffset;
 
-                int numberOfBytesInIncompleteBlock = (fileDescriptor.FileSize + i + 1) % BlockSize;
-                if (numberOfBytesInIncompleteBlock == 1)
+                fileDescriptor.FileData[byteIndex] = data[i];
+
+                if (IsBlockConsistsOnlyOfNulls(fileDescriptor.FileData, blockIndex))
                 {
                     fileDescriptor.BlockMap.Add(FindFreeBlockIndex());
                 }
 
                 openedFile.Position++;
             }
-
-            fileDescriptor.FileSize += data.Length;
 
             Console.WriteLine($"Successfully wrote {data.Length} bytes to the file with descriptor number '{fileDescriptorNumber}'.");
         }
