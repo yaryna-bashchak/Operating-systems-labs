@@ -124,6 +124,11 @@ public class FileSystem
         {
             FreeFileDescriptorNumbers.Add(fileDescriptorNumber);
             OpenedFiles.Remove(openedFile);
+
+            var fileDescriptorIndex = openedFile.DescriptorIndex;
+            if (Descriptors[fileDescriptorIndex]!.HardLinkCount == 0 && !IsFileOpened(fileDescriptorIndex))
+                FreeFile(fileDescriptorIndex);
+
             Console.WriteLine($"File was closed, now File Descriptor {fileDescriptorNumber} is free.");
         }
         else
@@ -256,7 +261,10 @@ public class FileSystem
             int fileDescriptorIndex = directoryEntry.FileDescriptorIndex;
             Descriptors[fileDescriptorIndex]!.HardLinkCount--;
 
-            Directory.Entries?.Remove(directoryEntry);
+            if (Descriptors[fileDescriptorIndex]!.HardLinkCount == 0 && !IsFileOpened(fileDescriptorIndex))
+                FreeFile(fileDescriptorIndex);
+            else
+                Directory.Entries?.Remove(directoryEntry);
 
             Console.WriteLine($"Successfully unlinked the hard link with name '{name}'.");
         }
@@ -347,5 +355,34 @@ public class FileSystem
             }
         }
         return -1;
+    }
+
+    private void FreeFile(int fileDescriptorIndex)
+    {
+        if (fileDescriptorIndex >= 0 && fileDescriptorIndex < Descriptors.Count)
+        {
+            var directoryEntry = Directory.Entries?.FirstOrDefault(entry => entry.FileDescriptorIndex == fileDescriptorIndex);
+            if (directoryEntry == null) return;
+
+            Directory.Entries?.Remove(directoryEntry);
+
+            foreach (int blockIndex in Descriptors[fileDescriptorIndex]!.BlockMap)
+            {
+                Bitmap[blockIndex] = false;
+            }
+
+            Descriptors[fileDescriptorIndex] = null;
+
+            Console.WriteLine($"Successfully released the file with descriptor index '{fileDescriptorIndex}'.");
+        }
+        else
+        {
+            Console.WriteLine($"Invalid file descriptor index '{fileDescriptorIndex}'.");
+        }
+    }
+
+    private bool IsFileOpened(int fileDescriptorNumber)
+    {
+        return OpenedFiles.Any(openedFile => openedFile.FileDescriptorNumber == fileDescriptorNumber);
     }
 }
