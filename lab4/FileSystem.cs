@@ -62,11 +62,11 @@ public class FileSystem
         if (descriptorIndex != -1)
         {
             FileDescriptor fileDescriptor = Descriptors[descriptorIndex]!;
-            Console.WriteLine($"File Information for '{filename}':");
-            Console.WriteLine($"Is Regular File: {fileDescriptor.IsRegularFile}");
-            Console.WriteLine($"Hard Link Count: {fileDescriptor.HardLinkCount}");
-            Console.WriteLine($"File Size: {fileDescriptor.FileSize} bytes");
-            Console.WriteLine($"Block Map: [{string.Join(", ", fileDescriptor.BlockMap)}]");
+            Console.Write($"File Information for '{filename}':");
+            Console.Write($" type={(fileDescriptor.IsRegularFile ? "reg" : "dir")}");
+            Console.Write($", nlink={fileDescriptor.HardLinkCount}");
+            Console.Write($", size={fileDescriptor.FileSize}");
+            Console.WriteLine($", nblock=[{fileDescriptor.BlockMap.Count}]");
         }
         else
         {
@@ -199,7 +199,7 @@ public class FileSystem
         {
             FileDescriptor fileDescriptor = Descriptors[openedFile.DescriptorIndex]!;
 
-            int remainingBytes = Bitmap.Count(b => !b) * BlockSize + BlockSize - 1 - ((((fileDescriptor.FileSize - 1) % BlockSize)+ BlockSize) % BlockSize);
+            int remainingBytes = Bitmap.Count(b => !b) * BlockSize + BlockSize - 1 - ((((fileDescriptor.FileSize - 1) % BlockSize) + BlockSize) % BlockSize);
             Console.WriteLine($"remainingBytes {remainingBytes}");
 
             if (data.Length > remainingBytes)
@@ -230,6 +230,42 @@ public class FileSystem
         else
         {
             Console.WriteLine($"File with descriptor number '{fileDescriptorNumber}' not found or not opened.");
+        }
+    }
+
+    public void Link(string name1, string name2)
+    {
+        int fileDescriptorIndex1 = Directory.Entries?.FirstOrDefault(entry => entry.FileName == name1)?.FileDescriptorIndex ?? -1;
+
+        if (fileDescriptorIndex1 != -1)
+        {
+            Directory.Entries?.Add(new DirectoryEntry(name2, fileDescriptorIndex1));
+            Descriptors[fileDescriptorIndex1]!.HardLinkCount++;
+
+            Console.WriteLine($"Successfully created a hard link '{name2}' pointing to the same file as '{name1}'.");
+        }
+        else
+        {
+            Console.WriteLine($"File with name '{name1}' not found in the directory.");
+        }
+    }
+
+    public void Unlink(string name)
+    {
+        var directoryEntry = Directory.Entries?.FirstOrDefault(entry => entry.FileName == name);
+
+        if (directoryEntry != null)
+        {
+            int fileDescriptorIndex = directoryEntry.FileDescriptorIndex;
+            Descriptors[fileDescriptorIndex]!.HardLinkCount--;
+
+            Directory.Entries?.Remove(directoryEntry);
+
+            Console.WriteLine($"Successfully unlinked the hard link with name '{name}'.");
+        }
+        else
+        {
+            Console.WriteLine($"Hard link with name '{name}' not found in the directory.");
         }
     }
 

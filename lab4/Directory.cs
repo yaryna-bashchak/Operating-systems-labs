@@ -32,7 +32,7 @@ public class Directory
         Console.WriteLine("Directory Listing:");
         foreach (var entry in Entries)
         {
-            Console.WriteLine($"Filename: {entry.FileName}, Descriptor Index: {entry.FileDescriptorIndex}");
+            Console.WriteLine($"{entry.FileName}\t=> reg, {entry.FileDescriptorIndex}");
         }
     }
 }
