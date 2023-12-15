@@ -2,7 +2,6 @@ namespace lab4;
 
 public class FileSystem
 {
-    // protected BlockStorage Storage { get; set; }
     public bool[] Bitmap { get; set; }
     public List<FileDescriptor?> Descriptors { get; set; }
     private List<int> FreeFileDescriptorNumbers { get; set; } = new List<int>();
@@ -10,8 +9,10 @@ public class FileSystem
     private int BlockSize { get; set; } = 64;
     public Directory Directory { get; set; }
 
-    public FileSystem(int numberOfBlocks, int maxNumberOfDescriptors, int maxNumberOfNumberDescriptors)
+    public FileSystem(int maxNumberOfDescriptors)
     {
+        int numberOfBlocks = 20;
+        int maxNumberOfNumberDescriptors = 3;
         Bitmap = new bool[numberOfBlocks];
         Descriptors = new List<FileDescriptor?>(maxNumberOfDescriptors);
         Directory = new();
@@ -62,11 +63,11 @@ public class FileSystem
         if (descriptorIndex != -1)
         {
             FileDescriptor fileDescriptor = Descriptors[descriptorIndex]!;
-            Console.Write($"File Information for '{filename}':");
+            Console.Write($"'{filename}' =>");
             Console.Write($" type={(fileDescriptor.IsRegularFile ? "reg" : "dir")}");
             Console.Write($", nlink={fileDescriptor.HardLinkCount}");
             Console.Write($", size={fileDescriptor.FileSize}");
-            Console.WriteLine($", nblock=[{fileDescriptor.BlockMap.Count}]");
+            Console.WriteLine($", nblock={fileDescriptor.BlockMap.Count}");
         }
         else
         {
@@ -125,11 +126,11 @@ public class FileSystem
             FreeFileDescriptorNumbers.Add(fileDescriptorNumber);
             OpenedFiles.Remove(openedFile);
 
+            Console.WriteLine($"File was closed, now File Descriptor {fileDescriptorNumber} is free.");
+
             var fileDescriptorIndex = openedFile.DescriptorIndex;
             if (Descriptors[fileDescriptorIndex]!.HardLinkCount == 0 && !IsFileOpened(fileDescriptorIndex))
                 FreeFile(fileDescriptorIndex);
-
-            Console.WriteLine($"File was closed, now File Descriptor {fileDescriptorNumber} is free.");
         }
         else
         {
@@ -217,12 +218,12 @@ public class FileSystem
                 int blockOffset = openedFile.Position % BlockSize;
                 int byteIndex = blockIndex * BlockSize + blockOffset;
 
-                fileDescriptor.FileData[byteIndex] = data[i];
-
                 if (IsBlockConsistsOnlyOfNulls(fileDescriptor.FileData, blockIndex))
                 {
                     fileDescriptor.BlockMap.Add(FindFreeBlockIndex());
                 }
+
+                fileDescriptor.FileData[byteIndex] = data[i];
 
                 openedFile.Position++;
             }
@@ -261,12 +262,12 @@ public class FileSystem
             int fileDescriptorIndex = directoryEntry.FileDescriptorIndex;
             Descriptors[fileDescriptorIndex]!.HardLinkCount--;
 
+            Console.WriteLine($"Successfully unlinked the hard link with name '{name}'.");
+
+            Directory.Entries?.Remove(directoryEntry);
+
             if (Descriptors[fileDescriptorIndex]!.HardLinkCount == 0 && !IsFileOpened(fileDescriptorIndex))
                 FreeFile(fileDescriptorIndex);
-            else
-                Directory.Entries?.Remove(directoryEntry);
-
-            Console.WriteLine($"Successfully unlinked the hard link with name '{name}'.");
         }
         else
         {
@@ -321,6 +322,9 @@ public class FileSystem
         int startIndex = blockIndex * BlockSize;
         int endIndex = startIndex + BlockSize - 1;
 
+        if (endIndex > data.Count - 1)
+            endIndex = data.Count - 1;
+
         for (int i = startIndex; i <= endIndex; i++)
         {
             if (data[i] != null)
@@ -361,11 +365,6 @@ public class FileSystem
     {
         if (fileDescriptorIndex >= 0 && fileDescriptorIndex < Descriptors.Count)
         {
-            var directoryEntry = Directory.Entries?.FirstOrDefault(entry => entry.FileDescriptorIndex == fileDescriptorIndex);
-            if (directoryEntry == null) return;
-
-            Directory.Entries?.Remove(directoryEntry);
-
             foreach (int blockIndex in Descriptors[fileDescriptorIndex]!.BlockMap)
             {
                 Bitmap[blockIndex] = false;
@@ -381,8 +380,8 @@ public class FileSystem
         }
     }
 
-    private bool IsFileOpened(int fileDescriptorNumber)
+    private bool IsFileOpened(int fileDescriptorIndex)
     {
-        return OpenedFiles.Any(openedFile => openedFile.FileDescriptorNumber == fileDescriptorNumber);
+        return OpenedFiles.Any(openedFile => openedFile.DescriptorIndex == fileDescriptorIndex);
     }
 }
