@@ -266,6 +266,64 @@ public class FileSystem
         }
     }
 
+    public void Truncate(string filename, int newSize)
+    {
+        int descriptorIndex = Directory.FindDescriptorIndex(filename);
+        if (descriptorIndex != -1)
+        {
+            FileDescriptor fileDescriptor = Descriptors[descriptorIndex]!;
+
+            var isFileReduced = newSize < fileDescriptor.FileSize;
+            if (isFileReduced)
+            {
+                int oldMaxIndexOfBlock = fileDescriptor.FileSize / BlockSize;
+                int newMaxIndexOfBlock = newSize / BlockSize;
+                int numberOfReleasedBlocks = oldMaxIndexOfBlock - newMaxIndexOfBlock;
+
+                for (int i = 0; i < numberOfReleasedBlocks; i++)
+                {
+                    if (!IsBlockConsistsOnlyOfNulls(fileDescriptor.FileData, oldMaxIndexOfBlock - i))
+                        fileDescriptor.BlockMap.RemoveAt(0);
+                }
+
+                fileDescriptor.FileData = fileDescriptor.FileData.Take(newSize).ToList();
+            }
+            else
+            {
+                fileDescriptor.FileData.Capacity = newSize;
+
+                for (int i = fileDescriptor.FileData.Count; i < newSize; i++)
+                {
+                    fileDescriptor.FileData.Add(null);
+                }
+            }
+
+            fileDescriptor.FileSize = newSize;
+
+            Console.WriteLine($"FileSize of '{filename}' was {(isFileReduced ? "reduced" : "increased")} to {newSize} bytes.");
+        }
+        else
+        {
+            Console.WriteLine($"File '{filename}' not found.");
+        }
+    }
+
+    private bool IsBlockConsistsOnlyOfNulls(List<byte?> data, int blockIndex)
+    {
+        int startIndex = blockIndex * BlockSize;
+        int endIndex = startIndex + BlockSize - 1;
+
+        for (int i = startIndex; i <= endIndex; i++)
+        {
+            if (data[i] != null)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     private int FindFreeBlockIndex()
     {
         for (int i = 0; i < Bitmap.Length; i++)
