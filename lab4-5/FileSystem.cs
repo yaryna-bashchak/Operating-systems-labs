@@ -4,10 +4,11 @@ public class FileSystem
 {
     public bool[] Bitmap { get; set; }
     public List<FileDescriptor?> Descriptors { get; set; }
+    public FileDescriptor CurrentDirectory { get; private set; }
     private List<int> FreeFileDescriptorNumbers { get; set; } = new List<int>();
     private List<OpenedFile> OpenedFiles { get; set; } = new List<OpenedFile>();
     private int BlockSize { get; set; } = 64;
-    public Directory Directory { get; set; }
+    public Directory RootDirectory { get; set; }
 
     public FileSystem(int maxNumberOfDescriptors)
     {
@@ -15,7 +16,6 @@ public class FileSystem
         int maxNumberOfNumberDescriptors = 3;
         Bitmap = new bool[numberOfBlocks];
         Descriptors = new List<FileDescriptor?>(maxNumberOfDescriptors);
-        Directory = new();
 
         for (int i = 0; i < maxNumberOfDescriptors; i++)
         {
@@ -28,15 +28,109 @@ public class FileSystem
         }
 
         int rootDescriptorIndex = FindFreeDescriptorIndex();
-        if (rootDescriptorIndex != -1)
+        if (rootDescriptorIndex == -1)
         {
-            Descriptors[rootDescriptorIndex] = new FileDescriptor(false);
+            throw new InvalidDataException("Can not create root directory.");
         }
+
+        Descriptors[rootDescriptorIndex] = new FileDescriptor(type: FileType.Dir);
+        RootDirectory = Descriptors[rootDescriptorIndex]!.Directory;
+        CurrentDirectory = Descriptors[rootDescriptorIndex]!;
     }
 
-    public bool Create(string fileName)
+    public FileDescriptor GetDescriptorByPath(string path)
     {
-        if (Directory.Contains(fileName))
+        FileDescriptor? startDescriptor;
+
+        if (path.StartsWith("/"))
+        {
+            startDescriptor = Descriptors[0];
+            path = path.TrimStart('/');
+        }
+        else
+        {
+            startDescriptor = CurrentDirectory;
+        }
+
+        if (startDescriptor == null)
+        {
+            throw new InvalidOperationException("Something wrong occured while finding root or current directory.");
+        }
+
+        if (string.IsNullOrEmpty(path))
+        {
+            return startDescriptor;
+        }
+
+        string[] parts = path.Split(new char[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
+        FileDescriptor current = startDescriptor;
+
+        foreach (var part in parts)
+        {
+            if (current.Type != FileType.Dir)
+            {
+                throw new InvalidOperationException("Path is not a directory.");
+            }
+
+            int index = current.Directory.FindDescriptorIndex(part);
+            if (index == -1)
+            {
+                throw new FileNotFoundException($"Part '{part}' of the path was not found.");
+            }
+
+            current = Descriptors[index]!;
+        }
+
+        return current;
+    }
+
+    public void ChangeDirectory(string path)
+    {
+        var newDir = GetDescriptorByPath(path);
+        if (newDir.Type != FileType.Dir)
+        {
+            throw new InvalidOperationException("Target is not a directory.");
+        }
+        CurrentDirectory = newDir;
+
+        Console.WriteLine($"CWD was changed to '{path}'.");
+    }
+
+    public void MakeDirectory(string path)
+    {
+        int lastSlashIndex = path.LastIndexOf('/');
+        string parentPath = lastSlashIndex == -1 ? "" : path[..lastSlashIndex];
+        string newDirName = lastSlashIndex == -1 ? path : path[(lastSlashIndex + 1)..];
+
+        if (string.IsNullOrWhiteSpace(newDirName))
+        {
+            throw new ArgumentException("Directory name cannot be empty.");
+        }
+
+        FileDescriptor parentDirDescriptor = GetDescriptorByPath(parentPath);
+
+        if (parentDirDescriptor.Type != FileType.Dir)
+        {
+            throw new InvalidOperationException("Cannot create a directory under a file.");
+        }
+
+        if (parentDirDescriptor.Directory.Contains(newDirName))
+        {
+            throw new InvalidOperationException("A directory with the same name already exists.");
+        }
+
+        int newDirDescriptorIndex = FindFreeDescriptorIndex();
+        if (newDirDescriptorIndex == -1)
+        {
+            throw new InvalidOperationException("No free file descriptors available.");
+        }
+
+        FileDescriptor newDirDescriptor = new FileDescriptor(type: FileType.Dir);
+        Descriptors[newDirDescriptorIndex] = newDirDescriptor;
+
+        parentDirDescriptor.Directory.AddEntry(newDirName, newDirDescriptorIndex);
+    }
+
         {
             Console.WriteLine($"File '{fileName}' already exists in the directory.");
             return false;
@@ -52,19 +146,19 @@ public class FileSystem
         var fileDescriptor = new FileDescriptor();
         Descriptors[descriptorIndex] = fileDescriptor;
 
-        Directory.AddEntry(fileName, descriptorIndex);
+        CurrentDirectory.Directory.AddEntry(fileName, descriptorIndex);
 
         return true;
     }
 
     public void Stat(string filename)
     {
-        int descriptorIndex = Directory.FindDescriptorIndex(filename);
+        int descriptorIndex = CurrentDirectory.Directory.FindDescriptorIndex(filename);
         if (descriptorIndex != -1)
         {
             FileDescriptor fileDescriptor = Descriptors[descriptorIndex]!;
             Console.Write($"'{filename}' =>");
-            Console.Write($" type={(fileDescriptor.IsRegularFile ? "reg" : "dir")}");
+            Console.Write($" type={fileDescriptor.Type}");
             Console.Write($", nlink={fileDescriptor.HardLinkCount}");
             Console.Write($", size={fileDescriptor.FileSize}");
             Console.WriteLine($", nblock={fileDescriptor.BlockMap.Count}");
@@ -77,12 +171,12 @@ public class FileSystem
 
     public void Ls()
     {
-        Directory.Ls();
+        CurrentDirectory.Directory.Ls();
     }
 
     public int Open(string filename)
     {
-        int descriptorIndex = Directory.FindDescriptorIndex(filename);
+        int descriptorIndex = CurrentDirectory.Directory.FindDescriptorIndex(filename);
         if (descriptorIndex != -1)
         {
             FileDescriptor fileDescriptor = Descriptors[descriptorIndex]!;
@@ -238,11 +332,11 @@ public class FileSystem
 
     public void Link(string name1, string name2)
     {
-        int fileDescriptorIndex1 = Directory.Entries?.FirstOrDefault(entry => entry.FileName == name1)?.FileDescriptorIndex ?? -1;
+        int fileDescriptorIndex1 = CurrentDirectory.Directory.Entries?.FirstOrDefault(entry => entry.FileName == name1)?.FileDescriptorIndex ?? -1;
 
         if (fileDescriptorIndex1 != -1)
         {
-            Directory.Entries?.Add(new DirectoryEntry(name2, fileDescriptorIndex1));
+            CurrentDirectory.Directory.Entries?.Add(new DirectoryEntry(name2, fileDescriptorIndex1));
             Descriptors[fileDescriptorIndex1]!.HardLinkCount++;
 
             Console.WriteLine($"Successfully created a hard link '{name2}' pointing to the same file as '{name1}'.");
@@ -255,7 +349,7 @@ public class FileSystem
 
     public void Unlink(string name)
     {
-        var directoryEntry = Directory.Entries?.FirstOrDefault(entry => entry.FileName == name);
+        var directoryEntry = CurrentDirectory.Directory.Entries?.FirstOrDefault(entry => entry.FileName == name);
 
         if (directoryEntry != null)
         {
@@ -264,7 +358,7 @@ public class FileSystem
 
             Console.WriteLine($"Successfully unlinked the hard link with name '{name}'.");
 
-            Directory.Entries?.Remove(directoryEntry);
+            CurrentDirectory.Directory.Entries?.Remove(directoryEntry);
 
             if (Descriptors[fileDescriptorIndex]!.HardLinkCount == 0 && !IsFileOpened(fileDescriptorIndex))
                 FreeFile(fileDescriptorIndex);
@@ -277,7 +371,7 @@ public class FileSystem
 
     public void Truncate(string filename, int newSize)
     {
-        int descriptorIndex = Directory.FindDescriptorIndex(filename);
+        int descriptorIndex = CurrentDirectory.Directory.FindDescriptorIndex(filename);
         if (descriptorIndex != -1)
         {
             FileDescriptor fileDescriptor = Descriptors[descriptorIndex]!;
