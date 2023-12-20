@@ -8,6 +8,7 @@ public class FileSystem
     private List<int> FreeFileDescriptorNumbers { get; set; } = new List<int>();
     private List<OpenedFile> OpenedFiles { get; set; } = new List<OpenedFile>();
     private int BlockSize { get; set; } = 64;
+    private int MaxSymlinkLoops = 10;
     public Directory RootDirectory { get; set; }
 
     public FileSystem(int maxNumberOfDescriptors)
@@ -66,6 +67,7 @@ public class FileSystem
 
     public FileDescriptor GetDescriptorByPath(string path)
     {
+        int symlinkLoopCount = 0;
         FileDescriptor? startDescriptor;
 
         if (path.StartsWith("/"))
@@ -93,6 +95,16 @@ public class FileSystem
 
         foreach (var part in parts)
         {
+            if (current.Type == FileType.Sym)
+            {
+                if (++symlinkLoopCount > MaxSymlinkLoops)
+                {
+                    throw new InvalidOperationException("Too many levels of symbolic links.");
+                }
+
+                current = ResolveSymlink(current);
+            }
+
             if (current.Type != FileType.Dir)
             {
                 throw new InvalidOperationException("Path is not a directory.");
@@ -108,6 +120,13 @@ public class FileSystem
         }
 
         return current;
+    }
+
+    private FileDescriptor ResolveSymlink(FileDescriptor symlinkDescriptor)
+    {
+        string targetPath = symlinkDescriptor.SymLinkTarget;
+
+        return GetDescriptorByPath(targetPath);
     }
 
     public void ChangeDirectory(string path)
@@ -298,19 +317,16 @@ public class FileSystem
 
         FileDescriptor fileDescriptor = Descriptors[descriptorIndex]!;
 
+        Console.Write($"'{path}' =>");
+        Console.Write($" type={fileDescriptor.Type.ToString().ToLower()}");
+        Console.Write($" nlink={fileDescriptor.HardLinkCount}");
+
         if (fileDescriptor.Type == FileType.Dir)
         {
-            Console.Write($"Directory '{path}' =>");
-            Console.Write($" type={fileDescriptor.Type.ToString().ToLower()}");
-            Console.Write($" nlink={fileDescriptor.HardLinkCount}");
             Console.WriteLine($" size={fileDescriptor.Directory.Entries.Count} items");
-            return;
         }
-        else
+        else if (fileDescriptor.Type == FileType.Reg)
         {
-            Console.Write($"'{path}' =>");
-            Console.Write($" type={fileDescriptor.Type.ToString().ToLower()}");
-            Console.Write($", nlink={fileDescriptor.HardLinkCount}");
             Console.Write($", size={fileDescriptor.FileSize}");
             Console.WriteLine($", nblock={fileDescriptor.BlockMap.Count}");
         }
@@ -324,7 +340,9 @@ public class FileSystem
         foreach (var entry in directoryDescriptor.Directory.Entries)
         {
             int descriptorIndex = directoryDescriptor.Directory.FindDescriptorIndex(entry.FileName);
-            Console.WriteLine($"{entry.FileName}\t=> {Descriptors[descriptorIndex]!.Type.ToString().ToLower()}, {entry.FileDescriptorIndex}");
+            var fileDescriptor = Descriptors[descriptorIndex]!;
+            var type = fileDescriptor.Type;
+            Console.WriteLine($"{entry.FileName}\t=> {type.ToString().ToLower()}, {descriptorIndex}{(type == FileType.Sym ? $" -> {fileDescriptor.SymLinkTarget}" : "")}");
         }
     }
 
