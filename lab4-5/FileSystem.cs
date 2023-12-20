@@ -204,6 +204,32 @@ public class FileSystem
         Console.WriteLine($"Successfully removed directory with pathname '{path}'.");
     }
 
+    public void CreateSymlink(string targetPath, string linkName)
+    {
+        var (linkParentPath, linkFileName) = GetParentPathAndItemName(linkName);
+
+        FileDescriptor linkParentDescriptor = GetDescriptorByPath(linkParentPath);
+        if (linkParentDescriptor.Directory.Contains(linkFileName))
+        {
+            Console.WriteLine("Link name already exists.");
+            return;
+        }
+
+        FileDescriptor symlinkDescriptor = new(type: FileType.Sym)
+        {
+            SymLinkTarget = targetPath
+        };
+
+        int symlinkDescriptorIndex = FindFreeDescriptorIndex();
+        if (symlinkDescriptorIndex == -1)
+        {
+            Console.WriteLine("No free file descriptors available.");
+            return;
+        }
+        Descriptors[symlinkDescriptorIndex] = symlinkDescriptor;
+        linkParentDescriptor.Directory.AddEntry(linkFileName, symlinkDescriptorIndex);
+    }
+
     private int FindDescriptorIndex(string path)
     {
         if (string.IsNullOrEmpty(path))
