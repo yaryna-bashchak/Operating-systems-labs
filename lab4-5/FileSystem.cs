@@ -133,11 +133,6 @@ public class FileSystem
 
         FileDescriptor parentDirDescriptor = GetDescriptorByPath(parentPath);
 
-        if (parentDirDescriptor.Type != FileType.Dir)
-        {
-            throw new InvalidOperationException("Cannot create a directory under a file.");
-        }
-
         if (parentDirDescriptor.Directory.Contains(newDirName))
         {
             Console.WriteLine($"File '{newDirName}' already exists in the directory.");
@@ -161,6 +156,52 @@ public class FileSystem
         Descriptors[parentDescriptorIndex]!.HardLinkCount++;
 
         parentDirDescriptor.Directory.AddEntry(newDirName, newDirDescriptorIndex);
+    }
+
+    public void RemoveDirectory(string path)
+    {
+        var (parentPath, dirName) = GetParentPathAndItemName(path);
+
+        if (string.IsNullOrWhiteSpace(dirName))
+        {
+            throw new ArgumentException("Directory name cannot be empty.");
+        }
+
+        if (dirName == "." || dirName == "..")
+        {
+            Console.WriteLine($"You can not remove '{dirName}' directory.");
+            return;
+        }
+
+        FileDescriptor parrentDirectoryDescriptor = GetDescriptorByPath(parentPath);
+
+        if (!parrentDirectoryDescriptor.Directory.Contains(dirName))
+        {
+            Console.WriteLine($"Directory '{dirName}' does not exist in the '{parentPath}'.");
+            return;
+        }
+
+        var directoryEntry = parrentDirectoryDescriptor.Directory.Entries.First(entry => entry.FileName == dirName);
+
+        int fileDescriptorIndex = directoryEntry.FileDescriptorIndex;
+        var fileDescriptor = Descriptors[fileDescriptorIndex]!;
+        if (fileDescriptor.Type != FileType.Dir)
+        {
+            Console.WriteLine($"'{path}' is not a directory.");
+            return;
+        }
+
+        if (fileDescriptor.Directory.Entries.Count != 2)
+        {
+            Console.WriteLine($"Directory '{path}' is not empty. You can not remove it.");
+            return;
+        }
+
+        parrentDirectoryDescriptor.Directory.Entries?.Remove(directoryEntry);
+        parrentDirectoryDescriptor.HardLinkCount--;
+        FreeFile(fileDescriptorIndex);
+
+        Console.WriteLine($"Successfully removed directory with pathname '{path}'.");
     }
 
     private int FindDescriptorIndex(string path)
@@ -441,6 +482,7 @@ public class FileSystem
             if (Descriptors[fileDescriptorIndex1]!.Type != FileType.Reg)
             {
                 Console.WriteLine($"'{path1}' is not a regular file.");
+                return;
             }
 
             parrentDirectoryDescriptor2.Directory.Entries?.Add(new DirectoryEntry(filename2, fileDescriptorIndex1));
@@ -466,6 +508,7 @@ public class FileSystem
             if (Descriptors[directoryEntry.FileDescriptorIndex]!.Type != FileType.Reg)
             {
                 Console.WriteLine($"'{path}' is not a regular file.");
+                return;
             }
 
             int fileDescriptorIndex = directoryEntry.FileDescriptorIndex;
@@ -493,10 +536,11 @@ public class FileSystem
         if (descriptorIndex != -1)
         {
             FileDescriptor fileDescriptor = Descriptors[descriptorIndex]!;
-            
+
             if (fileDescriptor.Type != FileType.Reg)
             {
                 Console.WriteLine($"'{path}' is not a regular file.");
+                return;
             }
 
             var isFileReduced = newSize < fileDescriptor.FileSize;
