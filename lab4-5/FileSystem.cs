@@ -43,6 +43,27 @@ public class FileSystem
         CurrentDirectory = Descriptors[rootDescriptorIndex]!;
     }
 
+    private (string parentPath, string itemName) GetParentPathAndItemName(string path)
+    {
+        string parentPath, itemName;
+
+        if (path == "/")
+        {
+            parentPath = "/";
+            itemName = "";
+        }
+        else
+        {
+            path = path.TrimEnd('/');
+
+            var lastIndex = path.LastIndexOf('/');
+            itemName = lastIndex == -1 ? path : path[(lastIndex + 1)..];
+            parentPath = lastIndex == -1 ? "" : lastIndex == 0 ? "/" : path[..lastIndex];
+        }
+
+        return (parentPath, itemName);
+    }
+
     public FileDescriptor GetDescriptorByPath(string path)
     {
         FileDescriptor? startDescriptor;
@@ -103,9 +124,7 @@ public class FileSystem
 
     public void MakeDirectory(string path)
     {
-        int lastSlashIndex = path.LastIndexOf('/');
-        string parentPath = lastSlashIndex == -1 ? "" : path[..lastSlashIndex];
-        string newDirName = lastSlashIndex == -1 ? path : path[(lastSlashIndex + 1)..];
+        var (parentPath, newDirName) = GetParentPathAndItemName(path);
 
         if (string.IsNullOrWhiteSpace(newDirName))
         {
@@ -157,27 +176,15 @@ public class FileSystem
 
     public bool Create(string path)
     {
-        var lastIndex = path.LastIndexOf('/');
-        string directoryPath, fileName;
+        var (directoryPath, fileName) = GetParentPathAndItemName(path);
 
-        if (lastIndex == -1)
-        {
-            directoryPath = "";
-            fileName = path;
-        }
-        else
-        {
-            directoryPath = path[..lastIndex];
-            fileName = path[(lastIndex + 1)..];
-        }
-
-        var directoryDescriptor = GetDescriptorByPath(directoryPath);
-        if (directoryDescriptor.Type != FileType.Dir)
+        var parrentDirectoryDescriptor = GetDescriptorByPath(directoryPath);
+        if (parrentDirectoryDescriptor.Type != FileType.Dir)
         {
             throw new InvalidOperationException("Path is not a directory.");
         }
 
-        if (CurrentDirectory.Directory.Contains(fileName))
+        if (parrentDirectoryDescriptor.Directory.Contains(fileName))
         {
             Console.WriteLine($"File '{fileName}' already exists in the directory.");
             return false;
@@ -193,42 +200,20 @@ public class FileSystem
         var fileDescriptor = new FileDescriptor();
         Descriptors[descriptorIndex] = fileDescriptor;
 
-        CurrentDirectory.Directory.AddEntry(fileName, descriptorIndex);
+        parrentDirectoryDescriptor.Directory.AddEntry(fileName, descriptorIndex);
 
         return true;
     }
 
-    public void Stat(string path)
+    public void Stat(string path = "")
     {
-        string directoryPath, itemName;
+        var (parentPath, itemName) = GetParentPathAndItemName(path);
+        var parrentDirectoryDescriptor = GetDescriptorByPath(parentPath);
 
-        if (path == "/")
-        {
-            directoryPath = "/";
-            itemName = "";
-        }
-        else
-        {
-            path = path.TrimEnd('/');
-
-            var lastIndex = path.LastIndexOf('/');
-            if (lastIndex == -1)
-            {
-                directoryPath = "";
-                itemName = path;
-            }
-            else
-            {
-                directoryPath = path[..lastIndex];
-                itemName = path[(lastIndex + 1)..];
-            }
-        }
-
-        var parrentDirectoryDescriptor = GetDescriptorByPath(directoryPath);
         int descriptorIndex = parrentDirectoryDescriptor.Directory.FindDescriptorIndex(itemName);
         if (string.IsNullOrEmpty(itemName))
         {
-            if (directoryPath == "/")
+            if (parentPath == "/")
             {
                 descriptorIndex = 0;
             }
@@ -241,6 +226,7 @@ public class FileSystem
         if (descriptorIndex == -1)
         {
             Console.WriteLine($"File '{path}' not found.");
+            return;
         }
 
         FileDescriptor fileDescriptor = Descriptors[descriptorIndex]!;
@@ -263,12 +249,14 @@ public class FileSystem
         }
     }
 
-    public void Ls()
+    public void Ls(string path = "")
     {
+        var directoryDescriptor = GetDescriptorByPath(path);
+
         Console.WriteLine("Directory Listing:");
-        foreach (var entry in CurrentDirectory.Directory.Entries)
+        foreach (var entry in directoryDescriptor.Directory.Entries)
         {
-            int descriptorIndex = CurrentDirectory.Directory.FindDescriptorIndex(entry.FileName);
+            int descriptorIndex = directoryDescriptor.Directory.FindDescriptorIndex(entry.FileName);
             Console.WriteLine($"{entry.FileName}\t=> {Descriptors[descriptorIndex]!.Type.ToString().ToLower()}, {entry.FileDescriptorIndex}");
         }
     }
