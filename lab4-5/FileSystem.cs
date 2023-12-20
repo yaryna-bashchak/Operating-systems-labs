@@ -121,7 +121,8 @@ public class FileSystem
 
         if (parentDirDescriptor.Directory.Contains(newDirName))
         {
-            throw new InvalidOperationException("A directory with the same name already exists.");
+            Console.WriteLine($"File '{newDirName}' already exists in the directory.");
+            return;
         }
 
         int newDirDescriptorIndex = FindFreeDescriptorIndex();
@@ -197,13 +198,58 @@ public class FileSystem
         return true;
     }
 
-    public void Stat(string filename)
+    public void Stat(string path)
     {
-        int descriptorIndex = CurrentDirectory.Directory.FindDescriptorIndex(filename);
+        string directoryPath, itemName;
+
+        var lastIndex = path.LastIndexOf('/');
+        if (lastIndex == path.Length - 1 && path.Length != 1)
+        {
+            path = path.TrimEnd('/');
+            lastIndex = path.LastIndexOf('/');
+        }
+
+        if (lastIndex == -1)
+        {
+            directoryPath = "";
+            itemName = path;
+        }
+        else
+        {
+            directoryPath = path[..lastIndex];
+            if (path == "/")
+                directoryPath = "/";
+            itemName = path[(lastIndex + 1)..];
+        }
+
+        var parrentDirectoryDescriptor = directoryPath == "" ? CurrentDirectory : GetDescriptorByPath(directoryPath);
+        int descriptorIndex = parrentDirectoryDescriptor.Directory.FindDescriptorIndex(itemName);
+        if (string.IsNullOrEmpty(itemName))
+        {
+            if (directoryPath == "/")
+            {
+                descriptorIndex = 0;
+            }
+            else
+            {
+                descriptorIndex = parrentDirectoryDescriptor.Directory.FindDescriptorIndex(".");
+            }
+        }
+        
+        FileDescriptor fileDescriptor = Descriptors[descriptorIndex]!;
+
+        if (fileDescriptor.Type == FileType.Dir)
+        {
+            Console.Write($"Directory '{path}' =>");
+            Console.Write($" type={fileDescriptor.Type.ToString().ToLower()}");
+            Console.Write($" nlink={fileDescriptor.HardLinkCount}");
+            Console.WriteLine($" size={fileDescriptor.Directory.Entries.Count} items");
+            return;
+        }
+
         if (descriptorIndex != -1)
         {
-            FileDescriptor fileDescriptor = Descriptors[descriptorIndex]!;
-            Console.Write($"'{filename}' =>");
+            Console.Write($"'{path}' =>");
             Console.Write($" type={fileDescriptor.Type.ToString().ToLower()}");
             Console.Write($", nlink={fileDescriptor.HardLinkCount}");
             Console.Write($", size={fileDescriptor.FileSize}");
@@ -211,7 +257,7 @@ public class FileSystem
         }
         else
         {
-            Console.WriteLine($"File '{filename}' not found.");
+            Console.WriteLine($"File '{path}' not found.");
         }
     }
 
