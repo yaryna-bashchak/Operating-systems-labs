@@ -261,12 +261,21 @@ public class FileSystem
         }
     }
 
-    public int Open(string filename)
+    public int Open(string path)
     {
-        int descriptorIndex = CurrentDirectory.Directory.FindDescriptorIndex(filename);
+        var (parentPath, filename) = GetParentPathAndItemName(path);
+        var parrentDirectoryDescriptor = GetDescriptorByPath(parentPath);
+
+        int descriptorIndex = parrentDirectoryDescriptor.Directory.FindDescriptorIndex(filename);
+
         if (descriptorIndex != -1)
         {
             FileDescriptor fileDescriptor = Descriptors[descriptorIndex]!;
+            if (fileDescriptor.Type != FileType.Reg)
+            {
+                Console.WriteLine($"The path you provided is not a regular file.");
+                return -1;
+            }
 
             int fileDescriptorNumber;
             if (FreeFileDescriptorNumbers.Count != 0)
@@ -417,33 +426,52 @@ public class FileSystem
         }
     }
 
-    public void Link(string name1, string name2)
+    public void Link(string path1, string path2)
     {
-        int fileDescriptorIndex1 = CurrentDirectory.Directory.Entries?.FirstOrDefault(entry => entry.FileName == name1)?.FileDescriptorIndex ?? -1;
+        var (parentPath1, filename1) = GetParentPathAndItemName(path1);
+        var parrentDirectoryDescriptor1 = GetDescriptorByPath(parentPath1);
+
+        var (parentPath2, filename2) = GetParentPathAndItemName(path2);
+        var parrentDirectoryDescriptor2 = GetDescriptorByPath(parentPath2);
+
+        int fileDescriptorIndex1 = parrentDirectoryDescriptor1.Directory.Entries?.FirstOrDefault(entry => entry.FileName == filename1)?.FileDescriptorIndex ?? -1;
 
         if (fileDescriptorIndex1 != -1)
         {
-            CurrentDirectory.Directory.Entries?.Add(new DirectoryEntry(name2, fileDescriptorIndex1));
+            if (Descriptors[fileDescriptorIndex1]!.Type != FileType.Reg)
+            {
+                Console.WriteLine($"'{path1}' is not a regular file.");
+            }
+
+            parrentDirectoryDescriptor2.Directory.Entries?.Add(new DirectoryEntry(filename2, fileDescriptorIndex1));
             Descriptors[fileDescriptorIndex1]!.HardLinkCount++;
 
-            Console.WriteLine($"Successfully created a hard link '{name2}' pointing to the same file as '{name1}'.");
+            Console.WriteLine($"Successfully created a hard link '{path2}' pointing to the same file as '{path1}'.");
         }
         else
         {
-            Console.WriteLine($"File with name '{name1}' not found in the directory.");
+            Console.WriteLine($"File with pathname '{path1}' not found in the directory.");
         }
     }
 
-    public void Unlink(string name)
+    public void Unlink(string path)
     {
-        var directoryEntry = CurrentDirectory.Directory.Entries?.FirstOrDefault(entry => entry.FileName == name);
+        var (parentPath, filename) = GetParentPathAndItemName(path);
+        var parrentDirectoryDescriptor = GetDescriptorByPath(parentPath);
+
+        var directoryEntry = parrentDirectoryDescriptor.Directory.Entries?.FirstOrDefault(entry => entry.FileName == filename);
 
         if (directoryEntry != null)
         {
+            if (Descriptors[directoryEntry.FileDescriptorIndex]!.Type != FileType.Reg)
+            {
+                Console.WriteLine($"'{path}' is not a regular file.");
+            }
+
             int fileDescriptorIndex = directoryEntry.FileDescriptorIndex;
             Descriptors[fileDescriptorIndex]!.HardLinkCount--;
 
-            Console.WriteLine($"Successfully unlinked the hard link with name '{name}'.");
+            Console.WriteLine($"Successfully unlinked the hard link with pathname '{path}'.");
 
             CurrentDirectory.Directory.Entries?.Remove(directoryEntry);
 
@@ -452,16 +480,24 @@ public class FileSystem
         }
         else
         {
-            Console.WriteLine($"Hard link with name '{name}' not found in the directory.");
+            Console.WriteLine($"Hard link with pathname '{path}' not found in the directory.");
         }
     }
 
-    public void Truncate(string filename, int newSize)
+    public void Truncate(string path, int newSize)
     {
-        int descriptorIndex = CurrentDirectory.Directory.FindDescriptorIndex(filename);
+        var (parentPath, filename) = GetParentPathAndItemName(path);
+        var parrentDirectoryDescriptor = GetDescriptorByPath(parentPath);
+
+        int descriptorIndex = parrentDirectoryDescriptor.Directory.FindDescriptorIndex(filename);
         if (descriptorIndex != -1)
         {
             FileDescriptor fileDescriptor = Descriptors[descriptorIndex]!;
+            
+            if (fileDescriptor.Type != FileType.Reg)
+            {
+                Console.WriteLine($"'{path}' is not a regular file.");
+            }
 
             var isFileReduced = newSize < fileDescriptor.FileSize;
             if (isFileReduced)
