@@ -20,6 +20,6 @@ public class FileDescriptor
             Directory = new Directory();
         }
 
-        Console.WriteLine($"File descriptor for {Type} was created.");
+        // Console.WriteLine($"File descriptor for {Type.ToString().ToLower()} was created.");
     }
 }

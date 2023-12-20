@@ -26,13 +26,4 @@ public class Directory
         }
         return -1;
     }
-
-    public void Ls()
-    {
-        Console.WriteLine("Directory Listing:");
-        foreach (var entry in Entries)
-        {
-            Console.WriteLine($"{entry.FileName}\t=> reg, {entry.FileDescriptorIndex}");
-        }
-    }
 }

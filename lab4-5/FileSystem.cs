@@ -154,6 +154,29 @@ public class FileSystem
         return Descriptors.IndexOf(descriptor);
     }
 
+    public bool Create(string path)
+    {
+        var lastIndex = path.LastIndexOf('/');
+        string directoryPath, fileName;
+
+        if (lastIndex == -1)
+        {
+            directoryPath = "";
+            fileName = path;
+        }
+        else
+        {
+            directoryPath = path[..lastIndex];
+            fileName = path[(lastIndex + 1)..];
+        }
+
+        var directoryDescriptor = GetDescriptorByPath(directoryPath);
+        if (directoryDescriptor.Type != FileType.Dir)
+        {
+            throw new InvalidOperationException("Path is not a directory.");
+        }
+
+        if (CurrentDirectory.Directory.Contains(fileName))
         {
             Console.WriteLine($"File '{fileName}' already exists in the directory.");
             return false;
@@ -181,7 +204,7 @@ public class FileSystem
         {
             FileDescriptor fileDescriptor = Descriptors[descriptorIndex]!;
             Console.Write($"'{filename}' =>");
-            Console.Write($" type={fileDescriptor.Type}");
+            Console.Write($" type={fileDescriptor.Type.ToString().ToLower()}");
             Console.Write($", nlink={fileDescriptor.HardLinkCount}");
             Console.Write($", size={fileDescriptor.FileSize}");
             Console.WriteLine($", nblock={fileDescriptor.BlockMap.Count}");
@@ -194,7 +217,12 @@ public class FileSystem
 
     public void Ls()
     {
-        CurrentDirectory.Directory.Ls();
+        Console.WriteLine("Directory Listing:");
+        foreach (var entry in CurrentDirectory.Directory.Entries)
+        {
+            int descriptorIndex = CurrentDirectory.Directory.FindDescriptorIndex(entry.FileName);
+            Console.WriteLine($"{entry.FileName}\t=> {Descriptors[descriptorIndex]!.Type.ToString().ToLower()}, {entry.FileDescriptorIndex}");
+        }
     }
 
     public int Open(string filename)

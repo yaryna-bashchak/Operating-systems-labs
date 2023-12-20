@@ -4,14 +4,18 @@ class Program
 {
     static void Main(string[] args)
     {
-        int maxNumberOfDescriptors = 5;
+        int maxNumberOfDescriptors = 10;
         var fileSystem = new FileSystem(maxNumberOfDescriptors);
 
         fileSystem.MakeDirectory("dir1");
         fileSystem.MakeDirectory("/dir2");
+        fileSystem.MakeDirectory("/dir1/dir3");
+        fileSystem.Create("/dir1/file1");
+        fileSystem.Create("dir1/file2");
         fileSystem.Ls();
         fileSystem.Stat("dir1");
-        fileSystem.ChangeDirectory("dir2");
+        fileSystem.ChangeDirectory("dir1");
+        fileSystem.Create("file3");
         fileSystem.Ls();
         // fileSystem.Create("file1.txt");
         // fileSystem.Create("file2.txt");
