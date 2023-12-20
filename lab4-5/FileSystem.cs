@@ -202,27 +202,29 @@ public class FileSystem
     {
         string directoryPath, itemName;
 
-        var lastIndex = path.LastIndexOf('/');
-        if (lastIndex == path.Length - 1 && path.Length != 1)
+        if (path == "/")
         {
-            path = path.TrimEnd('/');
-            lastIndex = path.LastIndexOf('/');
-        }
-
-        if (lastIndex == -1)
-        {
-            directoryPath = "";
-            itemName = path;
+            directoryPath = "/";
+            itemName = "";
         }
         else
         {
-            directoryPath = path[..lastIndex];
-            if (path == "/")
-                directoryPath = "/";
-            itemName = path[(lastIndex + 1)..];
+            path = path.TrimEnd('/');
+
+            var lastIndex = path.LastIndexOf('/');
+            if (lastIndex == -1)
+            {
+                directoryPath = "";
+                itemName = path;
+            }
+            else
+            {
+                directoryPath = path[..lastIndex];
+                itemName = path[(lastIndex + 1)..];
+            }
         }
 
-        var parrentDirectoryDescriptor = directoryPath == "" ? CurrentDirectory : GetDescriptorByPath(directoryPath);
+        var parrentDirectoryDescriptor = GetDescriptorByPath(directoryPath);
         int descriptorIndex = parrentDirectoryDescriptor.Directory.FindDescriptorIndex(itemName);
         if (string.IsNullOrEmpty(itemName))
         {
@@ -235,7 +237,12 @@ public class FileSystem
                 descriptorIndex = parrentDirectoryDescriptor.Directory.FindDescriptorIndex(".");
             }
         }
-        
+
+        if (descriptorIndex == -1)
+        {
+            Console.WriteLine($"File '{path}' not found.");
+        }
+
         FileDescriptor fileDescriptor = Descriptors[descriptorIndex]!;
 
         if (fileDescriptor.Type == FileType.Dir)
@@ -246,18 +253,13 @@ public class FileSystem
             Console.WriteLine($" size={fileDescriptor.Directory.Entries.Count} items");
             return;
         }
-
-        if (descriptorIndex != -1)
+        else
         {
             Console.Write($"'{path}' =>");
             Console.Write($" type={fileDescriptor.Type.ToString().ToLower()}");
             Console.Write($", nlink={fileDescriptor.HardLinkCount}");
             Console.Write($", size={fileDescriptor.FileSize}");
             Console.WriteLine($", nblock={fileDescriptor.BlockMap.Count}");
-        }
-        else
-        {
-            Console.WriteLine($"File '{path}' not found.");
         }
     }
 
