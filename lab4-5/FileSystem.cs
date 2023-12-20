@@ -35,6 +35,11 @@ public class FileSystem
 
         Descriptors[rootDescriptorIndex] = new FileDescriptor(type: FileType.Dir);
         RootDirectory = Descriptors[rootDescriptorIndex]!.Directory;
+        RootDirectory.Entries?.Add(new DirectoryEntry(".", rootDescriptorIndex));
+        Descriptors[rootDescriptorIndex]!.HardLinkCount++;
+        RootDirectory.Entries?.Add(new DirectoryEntry("..", rootDescriptorIndex));
+        Descriptors[rootDescriptorIndex]!.HardLinkCount++;
+
         CurrentDirectory = Descriptors[rootDescriptorIndex]!;
     }
 
@@ -128,7 +133,25 @@ public class FileSystem
         FileDescriptor newDirDescriptor = new FileDescriptor(type: FileType.Dir);
         Descriptors[newDirDescriptorIndex] = newDirDescriptor;
 
+        newDirDescriptor.Directory.Entries?.Add(new DirectoryEntry(".", newDirDescriptorIndex));
+        newDirDescriptor.HardLinkCount++;
+
+        int parentDescriptorIndex = FindDescriptorIndex(parentPath);
+        newDirDescriptor.Directory.Entries?.Add(new DirectoryEntry("..", parentDescriptorIndex));
+        Descriptors[parentDescriptorIndex]!.HardLinkCount++;
+
         parentDirDescriptor.Directory.AddEntry(newDirName, newDirDescriptorIndex);
+    }
+
+    private int FindDescriptorIndex(string path)
+    {
+        if (string.IsNullOrEmpty(path))
+        {
+            return 0;
+        }
+
+        FileDescriptor descriptor = GetDescriptorByPath(path);
+        return Descriptors.IndexOf(descriptor);
     }
 
         {

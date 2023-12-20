@@ -8,7 +8,10 @@ class Program
         var fileSystem = new FileSystem(maxNumberOfDescriptors);
 
         fileSystem.MakeDirectory("dir1");
-        fileSystem.MakeDirectory("/dir");
+        fileSystem.MakeDirectory("/dir2");
+        fileSystem.Ls();
+        fileSystem.Stat("dir1");
+        fileSystem.ChangeDirectory("dir2");
         fileSystem.Ls();
         // fileSystem.Create("file1.txt");
         // fileSystem.Create("file2.txt");
