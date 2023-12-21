@@ -65,7 +65,7 @@ public class FileSystem
         return (parentPath, itemName);
     }
 
-    public FileDescriptor GetDescriptorByPath(string path)
+    public FileDescriptor GetDirectoryDescriptorByPath(string path)
     {
         int symlinkLoopCount = 0;
         FileDescriptor? startDescriptor;
@@ -95,6 +95,14 @@ public class FileSystem
 
         foreach (var part in parts)
         {
+            int index = current.Directory.FindDescriptorIndex(part);
+            if (index == -1)
+            {
+                throw new FileNotFoundException($"Part '{part}' of the path was not found.");
+            }
+
+            current = Descriptors[index]!;
+
             if (current.Type == FileType.Sym)
             {
                 if (++symlinkLoopCount > MaxSymlinkLoops)
@@ -109,14 +117,6 @@ public class FileSystem
             {
                 throw new InvalidOperationException("Path is not a directory.");
             }
-
-            int index = current.Directory.FindDescriptorIndex(part);
-            if (index == -1)
-            {
-                throw new FileNotFoundException($"Part '{part}' of the path was not found.");
-            }
-
-            current = Descriptors[index]!;
         }
 
         return current;
@@ -126,12 +126,43 @@ public class FileSystem
     {
         string targetPath = symlinkDescriptor.SymLinkTarget;
 
-        return GetDescriptorByPath(targetPath);
+        return GetDirectoryDescriptorByPath(targetPath);
+    }
+
+    private FileDescriptor GetFileDescriptorByIndex(int descriptorIndex, bool shouldBeReg = true)
+    {
+        FileDescriptor fileDescriptor = Descriptors[descriptorIndex]!;
+        if (fileDescriptor.Type == FileType.Sym)
+        {
+            var targetPath = fileDescriptor.SymLinkTarget;
+            var (targetParentPath, targetFilename) = GetParentPathAndItemName(targetPath);
+            var targetParrentDirectoryDescriptor = GetDirectoryDescriptorByPath(targetParentPath);
+
+            int targetDescriptorIndex = targetParrentDirectoryDescriptor.Directory.FindDescriptorIndex(targetFilename);
+            fileDescriptor = Descriptors[targetDescriptorIndex]!;
+        }
+
+        if (shouldBeReg)
+        {
+            if (fileDescriptor.Type != FileType.Reg)
+            {
+                throw new InvalidOperationException($"The path you provided is not a regular file.");
+            }
+        }
+        else
+        {
+            if (fileDescriptor.Type != FileType.Dir)
+            {
+                throw new InvalidOperationException($"The path you provided is not a directory.");
+            }
+        }
+
+        return fileDescriptor;
     }
 
     public void ChangeDirectory(string path)
     {
-        var newDir = GetDescriptorByPath(path);
+        var newDir = GetDirectoryDescriptorByPath(path);
         if (newDir.Type != FileType.Dir)
         {
             throw new InvalidOperationException("Target is not a directory.");
@@ -150,7 +181,7 @@ public class FileSystem
             throw new ArgumentException("Directory name cannot be empty.");
         }
 
-        FileDescriptor parentDirDescriptor = GetDescriptorByPath(parentPath);
+        FileDescriptor parentDirDescriptor = GetDirectoryDescriptorByPath(parentPath);
 
         if (parentDirDescriptor.Directory.Contains(newDirName))
         {
@@ -192,7 +223,7 @@ public class FileSystem
             return;
         }
 
-        FileDescriptor parrentDirectoryDescriptor = GetDescriptorByPath(parentPath);
+        FileDescriptor parrentDirectoryDescriptor = GetDirectoryDescriptorByPath(parentPath);
 
         if (!parrentDirectoryDescriptor.Directory.Contains(dirName))
         {
@@ -227,7 +258,7 @@ public class FileSystem
     {
         var (linkParentPath, linkFileName) = GetParentPathAndItemName(linkName);
 
-        FileDescriptor linkParentDescriptor = GetDescriptorByPath(linkParentPath);
+        FileDescriptor linkParentDescriptor = GetDirectoryDescriptorByPath(linkParentPath);
         if (linkParentDescriptor.Directory.Contains(linkFileName))
         {
             Console.WriteLine("Link name already exists.");
@@ -256,7 +287,7 @@ public class FileSystem
             return 0;
         }
 
-        FileDescriptor descriptor = GetDescriptorByPath(path);
+        FileDescriptor descriptor = GetDirectoryDescriptorByPath(path);
         return Descriptors.IndexOf(descriptor);
     }
 
@@ -264,7 +295,7 @@ public class FileSystem
     {
         var (directoryPath, fileName) = GetParentPathAndItemName(path);
 
-        var parrentDirectoryDescriptor = GetDescriptorByPath(directoryPath);
+        var parrentDirectoryDescriptor = GetDirectoryDescriptorByPath(directoryPath);
         if (parrentDirectoryDescriptor.Type != FileType.Dir)
         {
             throw new InvalidOperationException("Path is not a directory.");
@@ -294,7 +325,7 @@ public class FileSystem
     public void Stat(string path = "")
     {
         var (parentPath, itemName) = GetParentPathAndItemName(path);
-        var parrentDirectoryDescriptor = GetDescriptorByPath(parentPath);
+        var parrentDirectoryDescriptor = GetDirectoryDescriptorByPath(parentPath);
 
         int descriptorIndex = parrentDirectoryDescriptor.Directory.FindDescriptorIndex(itemName);
         if (string.IsNullOrEmpty(itemName))
@@ -321,6 +352,25 @@ public class FileSystem
         Console.Write($" type={fileDescriptor.Type.ToString().ToLower()}");
         Console.Write($" nlink={fileDescriptor.HardLinkCount}");
 
+        if (fileDescriptor.Type == FileType.Sym)
+        {
+            try
+            {
+                fileDescriptor = GetFileDescriptorByIndex(descriptorIndex, shouldBeReg: false);
+            }
+            catch (Exception)
+            {
+                try
+                {
+                    fileDescriptor = GetFileDescriptorByIndex(descriptorIndex);
+                }
+                catch (Exception)
+                {
+                    Console.WriteLine("");
+                }
+            }
+        }
+
         if (fileDescriptor.Type == FileType.Dir)
         {
             Console.WriteLine($" size={fileDescriptor.Directory.Entries.Count} items");
@@ -334,7 +384,7 @@ public class FileSystem
 
     public void Ls(string path = "")
     {
-        var directoryDescriptor = GetDescriptorByPath(path);
+        var directoryDescriptor = GetDirectoryDescriptorByPath(path);
 
         Console.WriteLine("Directory Listing:");
         foreach (var entry in directoryDescriptor.Directory.Entries)
@@ -349,18 +399,13 @@ public class FileSystem
     public int Open(string path)
     {
         var (parentPath, filename) = GetParentPathAndItemName(path);
-        var parrentDirectoryDescriptor = GetDescriptorByPath(parentPath);
+        var parrentDirectoryDescriptor = GetDirectoryDescriptorByPath(parentPath);
 
         int descriptorIndex = parrentDirectoryDescriptor.Directory.FindDescriptorIndex(filename);
 
         if (descriptorIndex != -1)
         {
-            FileDescriptor fileDescriptor = Descriptors[descriptorIndex]!;
-            if (fileDescriptor.Type != FileType.Reg)
-            {
-                Console.WriteLine($"The path you provided is not a regular file.");
-                return -1;
-            }
+            FileDescriptor fileDescriptor = GetFileDescriptorByIndex(descriptorIndex);
 
             int fileDescriptorNumber;
             if (FreeFileDescriptorNumbers.Count != 0)
@@ -419,7 +464,7 @@ public class FileSystem
 
         if (openedFile != null)
         {
-            FileDescriptor fileDescriptor = Descriptors[openedFile.DescriptorIndex]!;
+            FileDescriptor fileDescriptor = GetFileDescriptorByIndex(openedFile.DescriptorIndex);
             if (offset >= 0 && offset < fileDescriptor.FileSize)
             {
                 openedFile.Position = offset;
@@ -441,7 +486,7 @@ public class FileSystem
 
         if (openedFile != null)
         {
-            FileDescriptor fileDescriptor = Descriptors[openedFile.DescriptorIndex]!;
+            FileDescriptor fileDescriptor = GetFileDescriptorByIndex(openedFile.DescriptorIndex);
 
             int remainingBytes = fileDescriptor.FileSize - openedFile.Position;
 
@@ -477,7 +522,7 @@ public class FileSystem
 
         if (openedFile != null)
         {
-            FileDescriptor fileDescriptor = Descriptors[openedFile.DescriptorIndex]!;
+            FileDescriptor fileDescriptor = GetFileDescriptorByIndex(openedFile.DescriptorIndex);
 
             int remainingBytes = fileDescriptor.FileSize - openedFile.Position;
 
@@ -514,20 +559,16 @@ public class FileSystem
     public void Link(string path1, string path2)
     {
         var (parentPath1, filename1) = GetParentPathAndItemName(path1);
-        var parrentDirectoryDescriptor1 = GetDescriptorByPath(parentPath1);
+        var parrentDirectoryDescriptor1 = GetDirectoryDescriptorByPath(parentPath1);
 
         var (parentPath2, filename2) = GetParentPathAndItemName(path2);
-        var parrentDirectoryDescriptor2 = GetDescriptorByPath(parentPath2);
+        var parrentDirectoryDescriptor2 = GetDirectoryDescriptorByPath(parentPath2);
 
         int fileDescriptorIndex1 = parrentDirectoryDescriptor1.Directory.Entries?.FirstOrDefault(entry => entry.FileName == filename1)?.FileDescriptorIndex ?? -1;
 
         if (fileDescriptorIndex1 != -1)
         {
-            if (Descriptors[fileDescriptorIndex1]!.Type != FileType.Reg)
-            {
-                Console.WriteLine($"'{path1}' is not a regular file.");
-                return;
-            }
+            FileDescriptor fileDescriptor = GetFileDescriptorByIndex(fileDescriptorIndex1);
 
             parrentDirectoryDescriptor2.Directory.Entries?.Add(new DirectoryEntry(filename2, fileDescriptorIndex1));
             Descriptors[fileDescriptorIndex1]!.HardLinkCount++;
@@ -543,24 +584,20 @@ public class FileSystem
     public void Unlink(string path)
     {
         var (parentPath, filename) = GetParentPathAndItemName(path);
-        var parrentDirectoryDescriptor = GetDescriptorByPath(parentPath);
+        var parrentDirectoryDescriptor = GetDirectoryDescriptorByPath(parentPath);
 
         var directoryEntry = parrentDirectoryDescriptor.Directory.Entries?.FirstOrDefault(entry => entry.FileName == filename);
 
         if (directoryEntry != null)
         {
-            if (Descriptors[directoryEntry.FileDescriptorIndex]!.Type != FileType.Reg)
-            {
-                Console.WriteLine($"'{path}' is not a regular file.");
-                return;
-            }
-
             int fileDescriptorIndex = directoryEntry.FileDescriptorIndex;
+            FileDescriptor fileDescriptor = GetFileDescriptorByIndex(fileDescriptorIndex);
+
             Descriptors[fileDescriptorIndex]!.HardLinkCount--;
 
             Console.WriteLine($"Successfully unlinked the hard link with pathname '{path}'.");
 
-            CurrentDirectory.Directory.Entries?.Remove(directoryEntry);
+            parrentDirectoryDescriptor.Directory.Entries?.Remove(directoryEntry);
 
             if (Descriptors[fileDescriptorIndex]!.HardLinkCount == 0 && !IsFileOpened(fileDescriptorIndex))
                 FreeFile(fileDescriptorIndex);
@@ -574,18 +611,12 @@ public class FileSystem
     public void Truncate(string path, int newSize)
     {
         var (parentPath, filename) = GetParentPathAndItemName(path);
-        var parrentDirectoryDescriptor = GetDescriptorByPath(parentPath);
+        var parrentDirectoryDescriptor = GetDirectoryDescriptorByPath(parentPath);
 
         int descriptorIndex = parrentDirectoryDescriptor.Directory.FindDescriptorIndex(filename);
         if (descriptorIndex != -1)
         {
-            FileDescriptor fileDescriptor = Descriptors[descriptorIndex]!;
-
-            if (fileDescriptor.Type != FileType.Reg)
-            {
-                Console.WriteLine($"'{path}' is not a regular file.");
-                return;
-            }
+            FileDescriptor fileDescriptor = GetFileDescriptorByIndex(descriptorIndex);
 
             var isFileReduced = newSize < fileDescriptor.FileSize;
             if (isFileReduced)
@@ -677,7 +708,7 @@ public class FileSystem
 
             Descriptors[fileDescriptorIndex] = null;
 
-            Console.WriteLine($"Successfully released the file with descriptor index '{fileDescriptorIndex}'.");
+            Console.WriteLine($"Successfully released file descriptor index '{fileDescriptorIndex}'.");
         }
         else
         {
